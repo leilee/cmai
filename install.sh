@@ -52,7 +52,7 @@ if [ "$OS" = "windows" ]; then
 else
     # Create symbolic link on Unix systems
     debug_log "Creating symbolic link"
-    sudo ln -sf "$SCRIPT_DIR/$SCRIPT_NAME" "/usr/local/bin/$EXECUTABLE_NAME"
+    ln -sf "$SCRIPT_DIR/$SCRIPT_NAME" "$HOME/bin/$EXECUTABLE_NAME"
 fi
 
 # Ensure config directory exists
