@@ -10,6 +10,8 @@ PROVIDER_FILE="$CONFIG_DIR/provider"
 DEBUG=false
 # Push flag
 PUSH=false
+# Stage changes flag
+STAGE_CHANGES=true
 # Default providers and URLs
 PROVIDER_OPENROUTER="openrouter"
 PROVIDER_OLLAMA="ollama"
@@ -198,12 +200,17 @@ while [[ $# -gt 0 ]]; do
         PUSH=true
         shift
         ;;
+    --no-stage)
+        STAGE_CHANGES=false
+        shift
+        ;;
     -h | --help)
         echo "Usage: cmai [options] [api_key]"
         echo ""
         echo "Options:"
         echo "  --debug               Enable debug mode"
         echo "  --push, -p            Push changes after commit"
+        echo "  --no-stage            Do not stage changes automatically"
         echo "  --model <model>       Use specific model (default: google/gemini-flash-1.5-8b)"
         echo "  --use-ollama          Use Ollama as provider (saves for future use)"
         echo "  --use-openrouter      Use OpenRouter as provider (saves for future use)"
@@ -291,7 +298,9 @@ fi
 
 # Stage all changes
 debug_log "Staging all changes"
-git add .
+if [ "$STAGE_CHANGES" = true ]; then
+    git add .
+fi
 
 # Get git changes and clean up any tabs
 # Get changes and format them appropriately for the provider
