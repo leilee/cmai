@@ -106,6 +106,11 @@ get_base_url() {
     fi
 }
 
+# Escape string for JSON
+json_escape() {
+    python3 -c 'import json, sys; print(json.dumps(sys.stdin.read()))'
+}
+
 # Replace all linebreaks with proper JSON escaping
 function replace_linebreaks() {
     local input="$1"
@@ -334,7 +339,8 @@ if [ -z "$MODEL" ]; then
 fi
 
 # Format changes into a single line and replace \M with newlines
-FORMATTED_CHANGES=$(echo "$CHANGES" | sed 's/\\M/\n/g' | tr '\n' ' ' | sed 's/  */ /g')
+# Also escape backslashes for JSON compatibility
+FORMATTED_CHANGES=$(echo "$CHANGES" | sed 's/\\M/\n/g' | tr '\n' ' ' | sed 's/  */ /g' | sed 's/\\/\\\\/g')
 
 # Create a simplified diff for LMStudio that avoids JSON escaping issues
 # Extract only the file names and modification types and replace \M with newlines
@@ -403,8 +409,37 @@ EOF
         "Content-Type: application/json"
         "X-Title: cmai - AI Commit Message Generator"
     )
-    REQUEST_BODY=$(
-        cat <<EOF
+    USER_CONTENT=$(cat <<EOF
+Generate a commit message for these changes:
+
+## File changes:
+<file_changes>
+$FORMATTED_CHANGES
+</file_changes>
+
+## Diff:
+<diff>
+$DIFF_CONTENT
+</diff>
+
+## Format:
+<type>(<scope>): <subject>
+
+<body>
+
+Important:
+- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
+- Subject: max 70 characters, imperative mood, no period
+- Body: list changes to explain what and why, not how
+- Scope: max 3 words
+- For minor changes: use 'fix' instead of 'feat'
+- Do not wrap your response in triple backticks
+- Response should be the commit message only, no explanations.
+EOF
+)
+    USER_CONTENT_ESCAPED=$(echo "$USER_CONTENT" | json_escape)
+
+    REQUEST_BODY=$(cat <<EOF
 {
   "model": "$MODEL",
   "stream": false,
@@ -415,19 +450,48 @@ EOF
     },
     {
       "role": "user",
-      "content": "Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$FORMATTED_CHANGES\n</file_changes>\n\n## Diff:\n<diff>\n$FORMATTED_DIFF\n</diff>\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+      "content": $USER_CONTENT_ESCAPED
     }
   ]
 }
 EOF
-    )
+)
     ;;
 "$PROVIDER_CUSTOM")
     debug_log "Making API request to custom provider"
     ENDPOINT="chat/completions"
     [ ! -z "$API_KEY" ] && HEADERS=(-H "Authorization: Bearer ${API_KEY}")
-    REQUEST_BODY=$(
-        cat <<EOF
+    USER_CONTENT=$(cat <<EOF
+Generate a commit message for these changes:
+
+## File changes:
+<file_changes>
+$FORMATTED_CHANGES
+</file_changes>
+
+## Diff:
+<diff>
+$DIFF_CONTENT
+</diff>
+
+## Format:
+<type>(<scope>): <subject>
+
+<body>
+
+Important:
+- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
+- Subject: max 70 characters, imperative mood, no period
+- Body: list changes to explain what and why, not how
+- Scope: max 3 words
+- For minor changes: use 'fix' instead of 'feat'
+- Do not wrap your response in triple backticks
+- Response should be the commit message only, no explanations.
+EOF
+)
+    USER_CONTENT_ESCAPED=$(echo "$USER_CONTENT" | json_escape)
+
+    REQUEST_BODY=$(cat <<EOF
 {
   "stream": false,
   "model": "$MODEL",
@@ -438,12 +502,12 @@ EOF
     },
     {
       "role": "user",
-      "content": "Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$FORMATTED_CHANGES\n</file_changes>\n\n## Diff:\n<diff>\n$FORMATTED_DIFF\n</diff>\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+      "content": $USER_CONTENT_ESCAPED
     }
   ]
 }
 EOF
-    )
+)
     ;;
 esac
 
