@@ -39,71 +39,72 @@ debug_log() {
     fi
 }
 
+# Generic function to save config values
+save_config() {
+    local file="$1"
+    local value="$2"
+    local description="$3"
+    
+    mkdir -p "$CONFIG_DIR"
+    # Special handling for API key to remove quotes and extra arguments
+    if [ "$file" = "$CONFIG_FILE" ]; then
+        value=$(echo "$value" | cut -d' ' -f1)
+    fi
+    echo "$value" >"$file"
+    chmod 600 "$file"
+    debug_log "$description saved to config file"
+}
+
+# Generic function to get config values
+get_config() {
+    local file="$1"
+    local default="$2"
+    
+    if [ -f "$file" ]; then
+        cat "$file"
+    else
+        echo "$default"
+    fi
+}
+
 # Function to save API key
 save_api_key() {
-    mkdir -p "$CONFIG_DIR"
-    # Remove any quotes or extra arguments from the API key
-    API_KEY=$(echo "$1" | cut -d' ' -f1)
-    echo "$API_KEY" >"$CONFIG_FILE"
-    chmod 600 "$CONFIG_FILE"
-    debug_log "API key saved to config file"
+    save_config "$CONFIG_FILE" "$1" "API key"
 }
 
 # Function to get API key
 get_api_key() {
-    if [ -f "$CONFIG_FILE" ]; then
-        cat "$CONFIG_FILE"
-    else
-        echo ""
-    fi
+    get_config "$CONFIG_FILE" ""
 }
 
 # Function to save model
 save_model() {
-    echo "$1" >"$MODEL_FILE"
-    chmod 600 "$MODEL_FILE"
-    debug_log "Model saved to config file"
+    save_config "$MODEL_FILE" "$1" "Model"
 }
 
 # Function to get model
 get_model() {
-    if [ -f "$MODEL_FILE" ]; then
-        cat "$MODEL_FILE"
-    else
-        echo "" # Return empty string to let provider-specific default be used
-    fi
+    get_config "$MODEL_FILE" ""
 }
 
 # Function to save base URL
 save_base_url() {
-    echo "$1" >"$BASE_URL_FILE"
-    chmod 600 "$BASE_URL_FILE"
-    debug_log "Base URL saved to config file"
+    save_config "$BASE_URL_FILE" "$1" "Base URL"
 }
 
 # Function to save provider
 save_provider() {
-    echo "$1" >"$PROVIDER_FILE"
-    chmod 600 "$PROVIDER_FILE"
-    debug_log "Provider saved to config file"
+    save_config "$PROVIDER_FILE" "$1" "Provider"
 }
 
 # Function to get provider
 get_provider() {
-    if [ -f "$PROVIDER_FILE" ]; then
-        cat "$PROVIDER_FILE"
-    else
-        echo "$PROVIDER_OPENROUTER"
-    fi
+    get_config "$PROVIDER_FILE" "$PROVIDER_OPENROUTER"
 }
 
 # Function to get base URL
 get_base_url() {
-    if [ -f "$BASE_URL_FILE" ]; then
-        cat "$BASE_URL_FILE"
-    else
-        echo "$OPENROUTER_URL" # Default base URL
-    fi
+    get_config "$BASE_URL_FILE" "$OPENROUTER_URL"
 }
 
 # Escape string for JSON
@@ -117,20 +118,23 @@ function replace_linebreaks() {
     printf '%s' "$input" | tr '\n' '\\n' | sed 's/\n$//'
 }
 
+# Function to setup provider configuration
+setup_provider() {
+    local provider="$1"
+    local base_url="$2"
+    local model="$3"
+    
+    PROVIDER="$provider"
+    BASE_URL="$base_url"
+    MODEL="$model"
+    save_provider "$PROVIDER"
+    save_base_url "$BASE_URL"
+    save_model "$MODEL"
+}
+
 # Load saved provider and base URL or use defaults
 PROVIDER=$(get_provider)
 BASE_URL=$(get_base_url)
-
-# If no saved provider, use defaults
-if [ -z "$PROVIDER" ]; then
-    PROVIDER="$PROVIDER_OPENROUTER"
-    BASE_URL="$OPENROUTER_URL"
-fi
-
-# Default models for providers
-OLLAMA_MODEL="codellama"
-OPENROUTER_MODEL="google/gemini-flash-1.5-8b"
-LMSTUDIO_MODEL="default"
 
 # Get saved model or use default based on provider
 MODEL=$(get_model)
@@ -164,30 +168,15 @@ while [[ $# -gt 0 ]]; do
         shift
         ;;
     --use-ollama)
-        PROVIDER="$PROVIDER_OLLAMA"
-        BASE_URL="$OLLAMA_URL"
-        MODEL="$OLLAMA_MODEL"
-        save_provider "$PROVIDER"
-        save_base_url "$BASE_URL"
-        save_model "$MODEL"
+        setup_provider "$PROVIDER_OLLAMA" "$OLLAMA_URL" "$OLLAMA_MODEL"
         shift
         ;;
     --use-openrouter)
-        PROVIDER="$PROVIDER_OPENROUTER"
-        BASE_URL="$OPENROUTER_URL"
-        MODEL="$OPENROUTER_MODEL"
-        save_provider "$PROVIDER"
-        save_base_url "$BASE_URL"
-        save_model "$MODEL"
+        setup_provider "$PROVIDER_OPENROUTER" "$OPENROUTER_URL" "$OPENROUTER_MODEL"
         shift
         ;;
     --use-lmstudio)
-        PROVIDER="$PROVIDER_LMSTUDIO"
-        BASE_URL="$LMSTUDIO_URL"
-        MODEL="$LMSTUDIO_MODEL"
-        save_provider "$PROVIDER"
-        save_base_url "$BASE_URL"
-        save_model "$MODEL"
+        setup_provider "$PROVIDER_LMSTUDIO" "$LMSTUDIO_URL" "$LMSTUDIO_MODEL"
         shift
         ;;
     --use-custom)
@@ -335,6 +324,9 @@ if [ -z "$MODEL" ]; then
     "$PROVIDER_OPENROUTER")
         MODEL="$OPENROUTER_MODEL"
         ;;
+    "$PROVIDER_LMSTUDIO")
+        MODEL="$LMSTUDIO_MODEL"
+        ;;
     esac
 fi
 
@@ -350,6 +342,56 @@ SIMPLIFIED_DIFF=$(echo "$CHANGES" | sed 's/\\M/\n/g' | sed 's/^\([A-Z]\) \(.*\)$
 # Replace newlines with \n, and both \M and \nM with \n, then escape double quotes
 FORMATTED_DIFF=$(echo "$DIFF_CONTENT" | tr '\n' '\\n' | sed 's/\\M/\\n/g' | sed 's/\\nM/\\n/g' | sed 's/"/\\"/g')
 
+# Common prompt instructions
+COMMON_INSTRUCTIONS="Follow the conventional commits format: <type>(<scope>): <subject>\n\n<body>\n\nWhere type is one of: feat, fix, docs, style, refactor, perf, test, chore.\n- Scope: max 3 words.\n- Keep the subject under 70 chars.\n- Body: list changes to explain what and why\n- Use 'fix' for minor changes\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+
+# System message constant
+SYSTEM_MESSAGE="You are a git commit message generator. Create conventional commit messages."
+
+# Function to build chat request for OpenRouter/Custom providers
+build_openrouter_request() {
+    local model="$1"
+    local changes="$2"
+    local diff="$3"
+    
+    cat <<EOF
+{
+  "model": "$model",
+  "stream": false,
+  "messages": [
+    {
+      "role": "system",
+      "content": "$SYSTEM_MESSAGE"
+    },
+    {
+      "role": "user",
+      "content": "Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$changes\n</file_changes>\n\n## Diff:\n<diff>\n$diff\n</diff>\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+    }
+  ]
+}
+EOF
+}
+
+# Function to build user content for LMStudio (needs JSON escaping)
+build_user_content_lmstudio() {
+    local changes="$1"
+    local diff="$2"
+    
+    cat <<EOF
+Generate a commit message for these changed files:  
+<file_changes>
+$changes.
+</file_changes>
+
+## Diff:
+<diff>
+$diff
+</diff>
+
+$COMMON_INSTRUCTIONS
+EOF
+}
+
 # Make the API request
 case "$PROVIDER" in
 "$PROVIDER_OLLAMA")
@@ -361,7 +403,7 @@ case "$PROVIDER" in
         cat <<EOF
 {
   "model": "$MODEL",
-  "prompt": "Generate a conventional commit message for these changes: \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## Diff:\n<diff>\n$FORMATTED_DIFF\n</diff>\n\n## Instructions:\n- Format should be: <type>(<scope>): <subject>\n\n<body>\n\nRules:\n- Type: feat, fix, docs, style, refactor, perf, test, chore\n- Scope: max 3 words.\n- Subject: max 70 characters, imperative mood, no period.\n- Body: list changes to explain what and why\n- Use 'fix' for minor changes\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations.",
+  "prompt": "Generate a conventional commit message for these changes: \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## Diff:\n<diff>\n$FORMATTED_DIFF\n</diff>\n\n## Instructions:\n$COMMON_INSTRUCTIONS",
   "stream": false
 }
 EOF
@@ -372,33 +414,26 @@ EOF
     ENDPOINT="chat/completions"
     HEADERS=(-H "Content-Type: application/json")
 
-    # Use a temp file to avoid JSON escaping issues with heredocs
-    TEMP_REQUEST_FILE="$(mktemp)"
-
-    # Write a clean JSON request to the temp file
-    cat >"$TEMP_REQUEST_FILE" <<EOF
+    USER_CONTENT=$(build_user_content_lmstudio "$FORMATTED_CHANGES" "$SIMPLIFIED_DIFF")
+    USER_CONTENT_ESCAPED=$(echo "$USER_CONTENT" | json_escape)
+    
+    REQUEST_BODY=$(cat <<EOF
 {
   "model": "$MODEL",
+  "stream": false,
   "messages": [
     {
       "role": "system",
-      "content": "You are a git commit message generator. Create conventional commit messages."
+      "content": "$SYSTEM_MESSAGE"
     },
     {
       "role": "user",
-      "content": "Generate a commit message for these changed files:  \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## Diff:\n<diff>\n$SIMPLIFIED_DIFF\n</diff>\n\nFollow the conventional commits format: <type>(<scope>): <subject>\n\n<body>\n\nWhere type is one of: feat, fix, docs, style, refactor, perf, test, chore.\n- Scope: max 3 words.\n- Keep the subject under 70 chars.\n- Body: list changes to explain what and why\n- Use 'fix' for minor changes\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+      "content": $USER_CONTENT_ESCAPED
     }
   ]
 }
 EOF
-
-    # Read the request body from the temp file
-    REQUEST_BODY="$(cat "$TEMP_REQUEST_FILE")"
-
-    # Clean up the temp file
-    rm -f "$TEMP_REQUEST_FILE"
-
-    debug_log "LMStudio request body:" "$REQUEST_BODY"
+)
     ;;
 "$PROVIDER_OPENROUTER")
     debug_log "Making API request to OpenRouter"
@@ -409,105 +444,13 @@ EOF
         "Content-Type: application/json"
         "X-Title: cmai - AI Commit Message Generator"
     )
-    USER_CONTENT=$(cat <<EOF
-Generate a commit message for these changes:
-
-## File changes:
-<file_changes>
-$FORMATTED_CHANGES
-</file_changes>
-
-## Diff:
-<diff>
-$DIFF_CONTENT
-</diff>
-
-## Format:
-<type>(<scope>): <subject>
-
-<body>
-
-Important:
-- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
-- Subject: max 70 characters, imperative mood, no period
-- Body: list changes to explain what and why, not how
-- Scope: max 3 words
-- For minor changes: use 'fix' instead of 'feat'
-- Do not wrap your response in triple backticks
-- Response should be the commit message only, no explanations.
-EOF
-)
-    USER_CONTENT_ESCAPED=$(echo "$USER_CONTENT" | json_escape)
-
-    REQUEST_BODY=$(cat <<EOF
-{
-  "model": "$MODEL",
-  "stream": false,
-  "messages": [
-    {
-      "role": "system",
-      "content": "You are a git commit message generator. Create conventional commit messages."
-    },
-    {
-      "role": "user",
-      "content": $USER_CONTENT_ESCAPED
-    }
-  ]
-}
-EOF
-)
+    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF")
     ;;
 "$PROVIDER_CUSTOM")
     debug_log "Making API request to custom provider"
     ENDPOINT="chat/completions"
     [ ! -z "$API_KEY" ] && HEADERS=(-H "Authorization: Bearer ${API_KEY}")
-    USER_CONTENT=$(cat <<EOF
-Generate a commit message for these changes:
-
-## File changes:
-<file_changes>
-$FORMATTED_CHANGES
-</file_changes>
-
-## Diff:
-<diff>
-$DIFF_CONTENT
-</diff>
-
-## Format:
-<type>(<scope>): <subject>
-
-<body>
-
-Important:
-- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
-- Subject: max 70 characters, imperative mood, no period
-- Body: list changes to explain what and why, not how
-- Scope: max 3 words
-- For minor changes: use 'fix' instead of 'feat'
-- Do not wrap your response in triple backticks
-- Response should be the commit message only, no explanations.
-EOF
-)
-    USER_CONTENT_ESCAPED=$(echo "$USER_CONTENT" | json_escape)
-
-    REQUEST_BODY=$(cat <<EOF
-{
-  "stream": false,
-  "model": "$MODEL",
-  "messages": [
-    {
-      "role": "system",
-      "content": "You are a git commit message generator. Create conventional commit messages."
-    },
-    {
-      "role": "user",
-      "content": $USER_CONTENT_ESCAPED
-    }
-  ]
-}
-EOF
-)
+    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF")
     ;;
 esac
 
@@ -529,62 +472,73 @@ RESPONSE=$(curl -s -X POST "$BASE_URL/$ENDPOINT" \
     -d "$REQUEST_BODY")
 debug_log "API response received" "$RESPONSE"
 
+# Function to handle common error checking
+check_api_errors() {
+    local response="$1"
+    local provider="$2"
+    
+    case "$provider" in
+    "$PROVIDER_OLLAMA")
+        if echo "$response" | grep -q "404 page not found"; then
+            echo "Error: Ollama API endpoint not found. Make sure Ollama is running and try again."
+            echo "Run: ollama serve"
+            exit 1
+        fi
+        if echo "$response" | grep -q "error"; then
+            ERROR=$(echo "$response" | jq -r '.error')
+            echo "Error from Ollama: $ERROR"
+            exit 1
+        fi
+        ;;
+    "$PROVIDER_LMSTUDIO")
+        if echo "$response" | grep -q "<!DOCTYPE html>"; then
+            echo "Error: LMStudio API returned HTML error. Make sure LMStudio is running and the API is accessible."
+            echo "Response: $response"
+            exit 1
+        fi
+        if echo "$response" | jq -e '.error' >/dev/null 2>&1; then
+            ERROR=$(echo "$response" | jq -r '.error.message // .error' 2>/dev/null)
+            echo "Error from LMStudio: $ERROR"
+            exit 1
+        fi
+        ;;
+    esac
+}
+
+# Function to extract commit message from response
+extract_commit_message() {
+    local response="$1"
+    local provider="$2"
+    
+    case "$provider" in
+    "$PROVIDER_OLLAMA")
+        COMMIT_FULL=$(echo "$response" | jq -r '.response // empty')
+        if [ -z "$COMMIT_FULL" ]; then
+            echo "Error: Failed to get response from Ollama. Response: $response"
+            exit 1
+        fi
+        ;;
+    "$PROVIDER_LMSTUDIO")
+        COMMIT_FULL=$(echo "$response" | jq -r '.choices[0].message.content' 2>/dev/null)
+        if [ $? -ne 0 ] || [ -z "$COMMIT_FULL" ] || [ "$COMMIT_FULL" = "null" ]; then
+            echo "Error: Failed to parse LMStudio response. Response format may be unexpected."
+            echo "Response: $response"
+            exit 1
+        fi
+        ;;
+    "$PROVIDER_OPENROUTER" | "$PROVIDER_CUSTOM")
+        COMMIT_FULL=$(echo "$response" | jq -r '.choices[0].message.content')
+        # If jq fails or returns null, fallback to grep method
+        if [ -z "$COMMIT_FULL" ] || [ "$COMMIT_FULL" = "null" ]; then
+            COMMIT_FULL=$(echo "$response" | grep -o '"content":"[^"]*"' | cut -d'"' -f4)
+        fi
+        ;;
+    esac
+}
+
 # Extract and clean the commit message
-case "$PROVIDER" in
-"$PROVIDER_OLLAMA")
-    # For Ollama, extract content from non-streaming response
-    if echo "$RESPONSE" | grep -q "404 page not found"; then
-        echo "Error: Ollama API endpoint not found. Make sure Ollama is running and try again."
-        echo "Run: ollama serve"
-        exit 1
-    fi
-    if echo "$RESPONSE" | grep -q "error"; then
-        ERROR=$(echo "$RESPONSE" | jq -r '.error')
-        echo "Error from Ollama: $ERROR"
-        exit 1
-    fi
-    COMMIT_FULL=$(echo "$RESPONSE" | jq -r '.response // empty')
-    if [ -z "$COMMIT_FULL" ]; then
-        echo "Error: Failed to get response from Ollama. Response: $RESPONSE"
-        exit 1
-    fi
-    ;;
-"$PROVIDER_LMSTUDIO")
-    # For LMStudio, extract content from response
-    debug_log "LMStudio raw response:" "$RESPONSE"
-
-    # Check if response is HTML error page
-    if echo "$RESPONSE" | grep -q "<!DOCTYPE html>"; then
-        echo "Error: LMStudio API returned HTML error. Make sure LMStudio is running and the API is accessible."
-        echo "Response: $RESPONSE"
-        exit 1
-    fi
-
-    # Check for JSON error - only if there's an actual error field with content
-    if echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1; then
-        ERROR=$(echo "$RESPONSE" | jq -r '.error.message // .error' 2>/dev/null)
-        echo "Error from LMStudio: $ERROR"
-        exit 1
-    fi
-
-    # Try to extract content with proper error handling
-    COMMIT_FULL=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' 2>/dev/null)
-    if [ $? -ne 0 ] || [ -z "$COMMIT_FULL" ] || [ "$COMMIT_FULL" = "null" ]; then
-        echo "Error: Failed to parse LMStudio response. Response format may be unexpected."
-        echo "Response: $RESPONSE"
-        exit 1
-    fi
-    ;;
-"$PROVIDER_OPENROUTER" | "$PROVIDER_CUSTOM")
-    # For OpenRouter and custom providers
-    COMMIT_FULL=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
-
-    # If jq fails or returns null, fallback to grep method
-    if [ -z "$COMMIT_FULL" ] || [ "$COMMIT_FULL" = "null" ]; then
-        COMMIT_FULL=$(echo "$RESPONSE" | grep -o '"content":"[^"]*"' | cut -d'"' -f4)
-    fi
-    ;;
-esac
+check_api_errors "$RESPONSE" "$PROVIDER"
+extract_commit_message "$RESPONSE" "$PROVIDER"
 
 # Clean the message:
 # 1. Preserve the structure of the commit message
