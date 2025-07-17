@@ -305,6 +305,31 @@ else
 fi
 # Get git diff for context
 DIFF_CONTENT=$(git diff --cached)
+
+# Smart diff handling based on size to prevent token limit issues
+DIFF_CHAR_COUNT=${#DIFF_CONTENT}
+SMALL_DIFF_LIMIT=20000    # Use full diff
+MEDIUM_DIFF_LIMIT=100000  # Truncate diff
+USE_DIFF_CONTENT=true
+
+debug_log "Diff content size: $DIFF_CHAR_COUNT characters"
+
+if [ $DIFF_CHAR_COUNT -le $SMALL_DIFF_LIMIT ]; then
+    debug_log "Using full diff content (small diff)"
+elif [ $DIFF_CHAR_COUNT -le $MEDIUM_DIFF_LIMIT ]; then
+    debug_log "Truncating diff content (medium diff)"
+    TRUNCATE_TO=15000
+    DIFF_CONTENT=$(echo "$DIFF_CONTENT" | head -c $TRUNCATE_TO)
+    DIFF_CONTENT="$DIFF_CONTENT
+
+[... diff truncated due to size - showing first $TRUNCATE_TO characters only]"
+else
+    debug_log "Diff too large ($DIFF_CHAR_COUNT chars), using file list only"
+    USE_DIFF_CONTENT=false
+    # Get more detailed file statistics for very large diffs
+    DETAILED_CHANGES=$(git diff --cached --stat)
+fi
+
 debug_log "Git changes detected" "$CHANGES"
 
 if [ -z "$CHANGES" ]; then
@@ -342,6 +367,11 @@ SIMPLIFIED_DIFF=$(echo "$CHANGES" | sed 's/\\M/\n/g' | sed 's/^\([A-Z]\) \(.*\)$
 # Replace newlines with \n, and both \M and \nM with \n, then escape double quotes
 FORMATTED_DIFF=$(echo "$DIFF_CONTENT" | tr '\n' '\\n' | sed 's/\\M/\\n/g' | sed 's/\\nM/\\n/g' | sed 's/"/\\"/g')
 
+# Format detailed changes for large diffs
+if [ "$USE_DIFF_CONTENT" = "false" ]; then
+    FORMATTED_DETAILED_CHANGES=$(echo "$DETAILED_CHANGES" | tr '\n' '\\n' | sed 's/"/\\"/g')
+fi
+
 # Common prompt instructions
 COMMON_INSTRUCTIONS="Follow the conventional commits format: <type>(<scope>): <subject>\n\n<body>\n\nWhere type is one of: feat, fix, docs, style, refactor, perf, test, chore.\n- Scope: max 3 words.\n- Keep the subject under 70 chars.\n- Body: list changes to explain what and why\n- Use 'fix' for minor changes\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
 
@@ -353,6 +383,14 @@ build_openrouter_request() {
     local model="$1"
     local changes="$2"
     local diff="$3"
+    local use_diff="$4"
+    local detailed_changes="$5"
+    
+    if [ "$use_diff" = "true" ]; then
+        local user_content="Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$changes\n</file_changes>\n\n## Diff:\n<diff>\n$diff\n</diff>\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+    else
+        local user_content="Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$changes\n</file_changes>\n\n## File statistics:\n<file_stats>\n$detailed_changes\n</file_stats>\n\nNote: Diff content was too large to include. Please generate commit message based on file changes and statistics only.\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+    fi
     
     cat <<EOF
 {
@@ -365,7 +403,7 @@ build_openrouter_request() {
     },
     {
       "role": "user",
-      "content": "Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$changes\n</file_changes>\n\n## Diff:\n<diff>\n$diff\n</diff>\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+      "content": "$user_content"
     }
   ]
 }
@@ -376,8 +414,11 @@ EOF
 build_user_content_lmstudio() {
     local changes="$1"
     local diff="$2"
+    local use_diff="$3"
+    local detailed_changes="$4"
     
-    cat <<EOF
+    if [ "$use_diff" = "true" ]; then
+        cat <<EOF
 Generate a commit message for these changed files:  
 <file_changes>
 $changes.
@@ -390,6 +431,23 @@ $diff
 
 $COMMON_INSTRUCTIONS
 EOF
+    else
+        cat <<EOF
+Generate a commit message for these changed files:  
+<file_changes>
+$changes.
+</file_changes>
+
+## File statistics:
+<file_stats>
+$detailed_changes
+</file_stats>
+
+Note: Diff content was too large to include. Please generate commit message based on file changes and statistics only.
+
+$COMMON_INSTRUCTIONS
+EOF
+    fi
 }
 
 # Make the API request
@@ -399,11 +457,18 @@ case "$PROVIDER" in
     ENDPOINT="api/generate"
     HEADERS=(-H "Content-Type: application/json")
     BASE_URL="http://localhost:11434"
+    
+    if [ "$USE_DIFF_CONTENT" = "true" ]; then
+        OLLAMA_PROMPT="Generate a conventional commit message for these changes: \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## Diff:\n<diff>\n$FORMATTED_DIFF\n</diff>\n\n## Instructions:\n$COMMON_INSTRUCTIONS"
+    else
+        OLLAMA_PROMPT="Generate a conventional commit message for these changes: \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## File statistics:\n<file_stats>\n$FORMATTED_DETAILED_CHANGES\n</file_stats>\n\nNote: Diff content was too large to include. Please generate commit message based on file changes and statistics only.\n\n## Instructions:\n$COMMON_INSTRUCTIONS"
+    fi
+    
     REQUEST_BODY=$(
         cat <<EOF
 {
   "model": "$MODEL",
-  "prompt": "Generate a conventional commit message for these changes: \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## Diff:\n<diff>\n$FORMATTED_DIFF\n</diff>\n\n## Instructions:\n$COMMON_INSTRUCTIONS",
+  "prompt": "$OLLAMA_PROMPT",
   "stream": false
 }
 EOF
@@ -414,7 +479,11 @@ EOF
     ENDPOINT="chat/completions"
     HEADERS=(-H "Content-Type: application/json")
 
-    USER_CONTENT=$(build_user_content_lmstudio "$FORMATTED_CHANGES" "$SIMPLIFIED_DIFF")
+    if [ "$USE_DIFF_CONTENT" = "true" ]; then
+        USER_CONTENT=$(build_user_content_lmstudio "$FORMATTED_CHANGES" "$SIMPLIFIED_DIFF" "$USE_DIFF_CONTENT" "")
+    else
+        USER_CONTENT=$(build_user_content_lmstudio "$FORMATTED_CHANGES" "" "$USE_DIFF_CONTENT" "$DETAILED_CHANGES")
+    fi
     USER_CONTENT_ESCAPED=$(echo "$USER_CONTENT" | json_escape)
     
     REQUEST_BODY=$(cat <<EOF
@@ -444,13 +513,13 @@ EOF
         "Content-Type: application/json"
         "X-Title: cmai - AI Commit Message Generator"
     )
-    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF")
+    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF" "$USE_DIFF_CONTENT" "$FORMATTED_DETAILED_CHANGES")
     ;;
 "$PROVIDER_CUSTOM")
     debug_log "Making API request to custom provider"
     ENDPOINT="chat/completions"
     [ ! -z "$API_KEY" ] && HEADERS=(-H "Authorization: Bearer ${API_KEY}")
-    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF")
+    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF" "$USE_DIFF_CONTENT" "$FORMATTED_DETAILED_CHANGES")
     ;;
 esac
 
