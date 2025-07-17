@@ -307,9 +307,13 @@ fi
 DIFF_CONTENT=$(git diff --cached)
 
 # Smart diff handling based on size to prevent token limit issues
+# Token estimation: ~3.5 characters per token for code
+# 32k token limit, but messages alone used 33k tokens in error case
+# Need to be much more conservative: limit total message to ~20k tokens
+# Diff content should be max ~10k tokens = ~35k characters
 DIFF_CHAR_COUNT=${#DIFF_CONTENT}
-SMALL_DIFF_LIMIT=20000    # Use full diff
-MEDIUM_DIFF_LIMIT=100000  # Truncate diff
+SMALL_DIFF_LIMIT=15000    # Use full diff (~4.3k tokens)
+MEDIUM_DIFF_LIMIT=50000   # Truncate diff 
 USE_DIFF_CONTENT=true
 
 debug_log "Diff content size: $DIFF_CHAR_COUNT characters"
@@ -318,7 +322,7 @@ if [ $DIFF_CHAR_COUNT -le $SMALL_DIFF_LIMIT ]; then
     debug_log "Using full diff content (small diff)"
 elif [ $DIFF_CHAR_COUNT -le $MEDIUM_DIFF_LIMIT ]; then
     debug_log "Truncating diff content (medium diff)"
-    TRUNCATE_TO=15000
+    TRUNCATE_TO=12000  # ~3.4k tokens for diff content
     DIFF_CONTENT=$(echo "$DIFF_CONTENT" | head -c $TRUNCATE_TO)
     DIFF_CONTENT="$DIFF_CONTENT
 
