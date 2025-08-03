@@ -559,9 +559,20 @@ def main():
     """Main entry point."""
     if len(sys.argv) > 1 and sys.argv[1] == "--help":
         print("Usage:")
-        print("  python auto_tester.py [rounds]                    # Test single model")
-        print("  python auto_tester.py --multi model1,model2 [rounds] # Test multiple models")
-        print("  rounds: Number of test rounds per scenario (default: 2)")
+        print("  python auto_tester.py [rounds]                           # Test single model (default: ollama:qwen3:4b)")
+        print("  python auto_tester.py --provider PROVIDER --model MODEL [rounds]  # Test specific provider/model")
+        print("  python auto_tester.py --multi model1,model2 [rounds]     # Test multiple models")
+        print("")
+        print("Options:")
+        print("  --provider PROVIDER    Provider: ollama, openrouter (default: ollama)")
+        print("  --model MODEL         Model name (default: qwen3:4b)")
+        print("  rounds                Number of test rounds per scenario (default: 3)")
+        print("")
+        print("Examples:")
+        print("  python auto_tester.py --provider ollama --model qwen3:4b 5")
+        print("  python auto_tester.py --provider openrouter --model qwen/qwen-2.5-coder-32b-instruct:free 2")
+        print("  python auto_tester.py --multi qwen3:4b,qwen2.5:3b,qwen3:1.7b")
+        print("  python auto_tester.py --multi qwen3:4b,openrouter:qwen/qwen-2.5-coder-32b-instruct:free")
         return
     
     if len(sys.argv) > 1 and sys.argv[1] == "--multi":
@@ -575,10 +586,29 @@ def main():
         run_multi_model_comparison(model_specs, rounds)
         return
     
-    # Single model testing (original behavior)
-    rounds = int(sys.argv[1]) if len(sys.argv) > 1 else 3
+    # Parse arguments for single model testing
+    provider = "ollama"
+    model = "qwen3:4b"
+    rounds = 3
     
-    tester = AutoTester(test_rounds=rounds)
+    i = 1
+    while i < len(sys.argv):
+        if sys.argv[i] == "--provider" and i + 1 < len(sys.argv):
+            provider = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == "--model" and i + 1 < len(sys.argv):
+            model = sys.argv[i + 1]
+            i += 2
+        else:
+            # Assume it's the rounds parameter
+            try:
+                rounds = int(sys.argv[i])
+            except ValueError:
+                print(f"Error: Invalid rounds parameter: {sys.argv[i]}")
+                return
+            i += 1
+    
+    tester = AutoTester(provider=provider, model=model, test_rounds=rounds)
     
     try:
         # Run tests

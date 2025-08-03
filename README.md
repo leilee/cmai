@@ -360,13 +360,103 @@ rm -rf "$USERPROFILE/.config/git-commit-ai"
 ```
 Then remove the directory from your PATH environment variable
 
+## Testing Framework
+
+This project includes an automated testing framework to evaluate commit message generation quality across different AI models and scenarios.
+
+### Running Tests
+
+#### Single Model Testing
+Test a specific provider and model with multiple scenarios:
+
+```bash
+python3 tests/auto_tester.py [--provider PROVIDER] [--model MODEL] [rounds]
+```
+
+- `--provider`: Provider to use (ollama, openrouter) - default: ollama
+- `--model`: Model name - default: qwen3:4b  
+- `rounds`: Number of test rounds per scenario - default: 3
+
+Examples:
+```bash
+# Test default ollama:qwen3:4b with 5 rounds
+python3 tests/auto_tester.py 5
+
+# Test specific Ollama model
+python3 tests/auto_tester.py --provider ollama --model qwen2.5:3b 3
+
+# Test OpenRouter model  
+python3 tests/auto_tester.py --provider openrouter --model qwen/qwen-2.5-coder-32b-instruct:free 2
+```
+
+#### Multi-Model Comparison
+Compare multiple models side by side:
+
+```bash
+python3 tests/auto_tester.py --multi model1,model2,model3 [rounds]
+```
+
+Examples:
+```bash
+# Compare Ollama models
+python3 tests/auto_tester.py --multi qwen3:4b,qwen2.5:3b,qwen3:1.7b 2
+
+# Compare different providers
+python3 tests/auto_tester.py --multi qwen3:4b,qwen/qwen-2.5-coder-32b-instruct:free 3
+```
+
+#### Help
+```bash
+python3 tests/auto_tester.py --help
+```
+
+### Test Scenarios
+
+The framework includes 9 test scenarios covering different commit types:
+- **simple_fix**: Basic bug fixes
+- **new_feature**: New functionality implementation
+- **documentation_update**: README and docs changes
+- **refactor_large**: Major code restructuring
+- **style_formatting**: Code formatting and style changes
+- **performance_optimization**: Performance improvements
+- **test_addition**: Adding new tests
+- **chore_dependencies**: Dependency updates
+- **adaptive_prompting_feature**: Complex feature implementation (external templates)
+
+### Test Reports
+
+Tests generate detailed reports including:
+- Overall accuracy statistics
+- Per-scenario consistency analysis
+- Common issues identification
+- Model comparison metrics
+- Recommendations for improvement
+
+Reports are saved to `tests/test_report_YYYYMMDD_HHMMSS.txt` and also displayed in the console.
+
+### Prerequisites for Testing
+
+1. **For Ollama models**: Ensure Ollama is running and models are pulled
+   ```bash
+   ollama serve
+   ollama pull qwen3:4b
+   ollama pull qwen2.5:3b
+   ollama pull qwen3:1.7b
+   ```
+
+2. **For OpenRouter models**: Ensure API key is configured
+   ```bash
+   cmai --api-key your_openrouter_api_key
+   ```
+
 ## Contributing
 
 1. Fork the repository
 2. Create your feature branch
 3. Commit your changes (using `cmai` 😉)
-4. Push to the branch
-5. Create a Pull Request
+4. Test your changes using the automated testing framework
+5. Push to the branch
+6. Create a Pull Request
 
 ## License
 

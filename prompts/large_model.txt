@@ -1,20 +1,13 @@
-Generate a conventional commit message:
+## Format:
 <type>(<scope>): <subject>
 
 <body>
 
-Examples:
-fix(auth): handle empty password validation
-feat(api): add user profile endpoints
-docs(readme): add installation instructions  
-style(main): fix spacing and formatting
-perf(database): optimize user query
-refactor(api): restructure auth system
-test(auth): add OAuth tests
-chore(deps): update dependencies
-
-RULES:
-- Type must be exactly one of: feat, fix, docs, style, refactor, perf, test, chore
-- Subject: under 70 characters, imperative mood, no period
-- Body: 1-4 bullet points explaining what and why
-- Output ONLY the commit message, NO additional explanations
+Important:
+- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
+- Subject: max 70 characters, imperative mood, no period
+- Body: list changes to explain what and why, not how
+- Scope: max 3 words
+- For minor changes: use 'fix' instead of 'feat'
+- Do not wrap your response in triple backticks
+- Response should be the commit message only, no explanations.
