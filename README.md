@@ -20,6 +20,7 @@ Your commit messages will look like this:
   - OpenRouter (default) using `google/gemini-flash-1.5-8b` - SUPER CHEAP!
     - Around $0.00001/commit -> $1 per 100K commit messages!
   - Custom API support - Bring your own provider!
+- 🧠 Adaptive prompting strategies based on model size (small/medium/large)
 - 📝 Follows [Conventional Commits](https://www.conventionalcommits.org/) format
 - 🔒 Secure local API key storage
 - 🚀 Automatic git commit and push
@@ -262,13 +263,6 @@ cmai --use-custom http://my-api.com
 cmai --use-custom http://my-api.com --model my-custom-model
 ```
 
-# Use a different model
-cmai --use-ollama --model qwen-coder:7b
-
-# Use Ollama with debug and push
-cmai --use-ollama --debug --push
-```
-
 ### Common Options
 ```bash
 # Commit and push
@@ -302,12 +296,8 @@ Example generated commit messages:
 │ └── git-commit.sh
 ├── .config/
 │ └── git-commit-ai/
-│   ├── config       # API key
-│   ├── model        # Selected AI model
-│   ├── provider     # Selected provider (openrouter/ollama/custom)
-│   └── base_url     # API base URL
-│   ├── model
-│   └── base_url
+│   ├── config.json  # Configuration (API keys, models, providers)
+│   └── providers/   # Provider-specific configurations
 └── usr/
   └── local/
     └── bin/
@@ -322,9 +312,8 @@ Example generated commit messages:
 │ └── cmai.sh
 └── .config/
   └── git-commit-ai/
-    ├── config
-    ├── model
-    └── base_url
+    ├── config.json
+    └── providers/
 ```
 
 ## Security

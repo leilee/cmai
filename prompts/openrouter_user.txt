@@ -1,0 +1,22 @@
+Generate a commit message for these changes:
+
+## File changes:
+<file_changes>
+{changes}
+</file_changes>
+
+{diff_section}
+
+## Format:
+<type>(<scope>): <subject>
+
+<body>
+
+Important:
+- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
+- Subject: max 70 characters, imperative mood, no period
+- Body: list changes to explain what and why, not how
+- Scope: max 3 words
+- For minor changes: use 'fix' instead of 'feat'
+- Do not wrap your response in triple backticks
+- Response should be the commit message only, no explanations.

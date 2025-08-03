@@ -87,6 +87,12 @@ if [ ! -f "$SOURCE_SCRIPT" ]; then
     exit 1
 fi
 
+# Check for prompts directory if installing Python version
+SOURCE_PROMPTS_DIR="$(dirname "$0")/prompts"
+if [ "$VERSION" = "py" ] && [ ! -d "$SOURCE_PROMPTS_DIR" ]; then
+    echo "Warning: prompts directory not found. Python version may use fallback prompts."
+fi
+
 echo "Installing $SCRIPT_TYPE version of git-commit-ai..."
 
 # Create directory for the script
@@ -97,6 +103,12 @@ mkdir -p "$SCRIPT_DIR"
 debug_log "Copying $SCRIPT_TYPE git-commit script"
 cp "$SOURCE_SCRIPT" "$SCRIPT_DIR/$SCRIPT_NAME"
 chmod +x "$SCRIPT_DIR/$SCRIPT_NAME"
+
+# Copy prompts directory if it exists and we're installing Python version
+if [ "$VERSION" = "py" ] && [ -d "$SOURCE_PROMPTS_DIR" ]; then
+    debug_log "Copying prompts directory"
+    cp -r "$SOURCE_PROMPTS_DIR" "$SCRIPT_DIR/"
+fi
 
 # Handle executable installation
 if [ "$OS" = "windows" ]; then

@@ -362,62 +362,36 @@ class GitCommitAI:
     
     def build_openrouter_request(self, changes: str, diff: str, use_diff: bool, detailed_changes: str) -> Dict:
         """Build request for OpenRouter/Custom providers."""
-        system_message = "You are a git commit message generator. Create conventional commit messages."
         
+        # Load system message from external file (no fallback)
+        system_message = self.load_prompt_template("openrouter_system.txt")
+        if not system_message:
+            raise FileNotFoundError("Required prompt template 'openrouter_system.txt' not found")
+        
+        # Load user message template from external file (no fallback)
+        user_template = self.load_prompt_template("openrouter_user.txt")
+        if not user_template:
+            raise FileNotFoundError("Required prompt template 'openrouter_user.txt' not found")
+        
+        # Build diff section based on whether to use diff content
         if use_diff:
-            user_content = f"""Generate a commit message for these changes:
-
-## File changes:
-<file_changes>
-{changes}
-</file_changes>
-
-## Diff:
+            diff_section = f"""## Diff:
 <diff>
 {diff}
-</diff>
-
-## Format:
-<type>(<scope>): <subject>
-
-<body>
-
-Important:
-- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
-- Subject: max 70 characters, imperative mood, no period
-- Body: list changes to explain what and why, not how
-- Scope: max 3 words
-- For minor changes: use 'fix' instead of 'feat'
-- Do not wrap your response in triple backticks
-- Response should be the commit message only, no explanations."""
+</diff>"""
         else:
-            user_content = f"""Generate a commit message for these changes:
-
-## File changes:
-<file_changes>
-{changes}
-</file_changes>
-
-## File statistics:
+            diff_section = f"""## File statistics:
 <file_stats>
 {detailed_changes}
 </file_stats>
 
-Note: Diff content was too large to include. Please generate commit message based on file changes and statistics only.
-
-## Format:
-<type>(<scope>): <subject>
-
-<body>
-
-Important:
-- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
-- Subject: max 70 characters, imperative mood, no period
-- Body: list changes to explain what and why, not how
-- Scope: max 3 words
-- For minor changes: use 'fix' instead of 'feat'
-- Do not wrap your response in triple backticks
-- Response should be the commit message only, no explanations."""
+Note: Diff content was too large to include. Please generate commit message based on file changes and statistics only."""
+        
+        # Format the user content using the template
+        user_content = user_template.format(
+            changes=changes,
+            diff_section=diff_section
+        )
         
         return {
             "model": self.model,
@@ -428,54 +402,109 @@ Important:
             ]
         }
     
-    def build_ollama_request(self, changes: str, diff: str, use_diff: bool, detailed_changes: str) -> Dict:
-        """Build request for Ollama provider."""
-        common_instructions = """Follow the conventional commits format: <type>(<scope>): <subject>
-
-<body>
-
-Where type is one of: feat, fix, docs, style, refactor, perf, test, chore.
-- Scope: max 3 words.
-- Keep the subject under 70 chars.
-- Body: list changes to explain what and why
-- Use 'fix' for minor changes
-- Do not wrap your response in triple backticks
-- Response should be the commit message only, no explanations."""
+    def get_model_tier(self) -> str:
+        """Determine model tier based on model name for adaptive prompting."""
+        model_lower = self.model.lower()
         
+        # Large models (30B+) - minimal prompting needed
+        if any(size in model_lower for size in ['32b', '30b', '70b', '72b']):
+            return 'large'
+        
+        # Small models (≤2B) - heavy prompting needed 
+        if any(size in model_lower for size in ['1.7b', '1b', '2b']):
+            return 'small'
+        
+        # Medium models (3-10B) - balanced approach
+        if any(size in model_lower for size in ['3b', '4b', '7b', '8b']):
+            return 'medium'
+        
+        # Default to medium for unknown models
+        return 'medium'
+    
+    def load_prompt_template(self, filename: str) -> str:
+        """Load prompt template from external file."""
+        try:
+            # Try to load from prompts directory next to the script
+            script_dir = Path(__file__).parent
+            prompt_file = script_dir / "prompts" / filename
+            
+            if prompt_file.exists():
+                return prompt_file.read_text().strip()
+            
+            # Fallback: try from user config directory  
+            config_prompts_dir = self.config.config_dir / "prompts"
+            prompt_file = config_prompts_dir / filename
+            
+            if prompt_file.exists():
+                return prompt_file.read_text().strip()
+            
+            # Try from installed location (for installed versions)
+            installed_prompts_dir = Path.home() / "git-commit-ai" / "prompts"
+            prompt_file = installed_prompts_dir / filename
+            
+            if prompt_file.exists():
+                return prompt_file.read_text().strip()
+            
+            # If no external file found, return empty string
+            return ""
+            
+        except Exception as e:
+            self.debug_log(f"Warning: Could not load prompt template {filename}: {e}")
+            return ""
+    
+    def build_ollama_request(self, changes: str, diff: str, use_diff: bool, detailed_changes: str) -> Dict:
+        """Build request for Ollama provider with adaptive prompting strategy."""
+        
+        model_tier = self.get_model_tier()
+        
+        # Load instructions from external files (no fallbacks - use files only)
+        instructions = self.load_prompt_template(f"{model_tier}_model.txt")
+        if not instructions:
+            raise FileNotFoundError(f"Required prompt template '{model_tier}_model.txt' not found")
+        
+        # Add final check for medium and small models
+        final_check = ""
+        if model_tier in ['medium', 'small']:
+            final_check_template = self.load_prompt_template("final_check.txt")
+            if final_check_template:
+                final_check = f"\n\n{final_check_template}"
+        
+        # Load base prompt template
+        base_template = self.load_prompt_template("ollama_base.txt")
+        if not base_template:
+            raise FileNotFoundError("Required prompt template 'ollama_base.txt' not found")
+        
+        # Build diff section based on whether to use diff content
         if use_diff:
-            prompt = f"""Generate a conventional commit message for these changes: 
-<file_changes>
-{changes}
-</file_changes>
-
-## Diff:
+            diff_section = f"""## Diff:
 <diff>
 {diff}
-</diff>
-
-## Instructions:
-{common_instructions}"""
+</diff>"""
         else:
-            prompt = f"""Generate a conventional commit message for these changes: 
-<file_changes>
-{changes}
-</file_changes>
-
-## File statistics:
+            diff_section = f"""## File statistics:
 <file_stats>
 {detailed_changes}
 </file_stats>
 
-Note: Diff content was too large to include. Please generate commit message based on file changes and statistics only.
-
-## Instructions:
-{common_instructions}"""
+Note: Diff content was too large to include. Please generate commit message based on file changes and statistics only."""
+        
+        # Format the prompt using the template
+        prompt = base_template.format(
+            changes=changes,
+            diff_section=diff_section,
+            instructions=instructions,
+            final_check=final_check
+        )
         
         return {
             "model": self.model,
             "prompt": prompt,
+            "stream": False,
             "think": False,
-            "stream": False
+            "options": {
+                "temperature": 0.2,
+                "top_p": 0.8
+            }
         }
     
     def make_api_request(self, changes: str, diff: str, use_diff: bool, detailed_changes: str) -> str:

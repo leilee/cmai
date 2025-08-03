@@ -1,0 +1,11 @@
+FINAL CHECK: If you're thinking "refactor", ask yourself:
+- Is this just a small fix? Use "fix" instead
+- Is this just formatting? Use "style" instead  
+- Is this just performance? Use "perf" instead
+- Is this documentation? Use "docs" instead
+Only use "refactor" for major architectural restructuring.
+
+ABSOLUTELY NO:
+- "This commit..." or "The changes include..." phrases
+- Numbered lists or explanatory paragraphs  
+- Use ONLY action-focused bullet points!

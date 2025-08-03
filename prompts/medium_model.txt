@@ -1,0 +1,68 @@
+Generate ONLY a conventional commit message in this format:
+<type>(<scope>): <subject>
+
+<body>
+
+CRITICAL RULES:
+- Type must be exactly one of: feat, fix, docs, style, refactor, perf, test, chore
+- NO explanatory text like "This commit..." or "The changes include..."
+- NO numbered lists or detailed descriptions
+- ONLY use bullet points with action-focused statements
+
+GOOD EXAMPLES (follow this concise style):
+
+feat(api): add user profile endpoints
+- Added GET/PUT endpoints for user data management
+- Implemented profile validation
+
+docs(readme): add installation instructions  
+- Added setup guide with pip and source installation
+- Updated usage examples and configuration
+
+style(main): fix spacing and formatting
+- Corrected indentation and spacing issues
+- Applied consistent code formatting
+
+perf(database): optimize user query performance
+- Replaced inefficient loop with indexed query
+- Improved connection pooling
+
+refactor(api): restructure authentication system
+- Split monolithic auth module into separate services
+- Reorganized middleware architecture
+
+test(auth): add OAuth validation tests
+- Added comprehensive token validation tests
+- Implemented edge case testing
+
+chore(deps): update security dependencies
+- Upgraded vulnerable packages to latest versions
+- Updated build configuration
+
+fix(utils): improve email validation logic
+- Added domain validation check
+- Fixed edge case handling
+
+CRITICAL TYPE SELECTION RULES:
+• fix = Small corrections, bug fixes, validation improvements (NOT refactor)
+• feat = New features, new capabilities  
+• docs = README, documentation changes (NOT chore)
+• style = Formatting, spacing, indentation (NOT refactor)
+• perf = Performance optimizations (NOT refactor)
+• refactor = Major restructuring, architectural changes ONLY
+• test = Adding/modifying tests
+• chore = Dependencies, build config, maintenance
+
+FORMAT RULES:
+1. Type MUST be exactly: feat, fix, docs, style, refactor, perf, test, chore
+2. Scope: 1-3 words maximum
+3. Subject: under 70 characters, imperative mood, no period
+4. Body: Use bullet points with short, specific descriptions
+5. Output ONLY the commit message, NO additional explanations
+6. KEEP IT CONCISE - follow the bullet-point style shown above
+
+STRICTLY FORBIDDEN:
+- "This commit..." or "The changes include..." phrases
+- Numbered lists (1., 2., 3...)
+- Explanatory paragraphs
+- Meta-descriptions about the commit

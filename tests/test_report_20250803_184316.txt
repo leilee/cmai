@@ -1,0 +1,81 @@
+
+🤖 Automated Commit Message Generation Test Report
+Generated: 2025-08-03 18:43:16
+Model: ollama:qwen3:4b
+Test Rounds: 1
+
+📊 OVERALL STATISTICS
+==================
+Total Tests: 9
+Format Correct: 9/9 (100.0%)
+Type Correct: 6/9 (66.7%)
+Both Correct: 6/9 (66.7%)
+
+🔍 DETAILED ANALYSIS BY SCENARIO
+==============================
+SIMPLE FIX
+Expected: fix(utils)
+Consistency: 1/1 (100.0%)
+  Round 1: ✅ fix(utils): improve email validation logic...
+
+NEW FEATURE
+Expected: feat(auth)
+Consistency: 1/1 (100.0%)
+  Round 1: ✅ feat(auth): add oauth manager...
+
+DOCUMENTATION UPDATE
+Expected: docs(readme)
+Consistency: 1/1 (100.0%)
+  Round 1: ✅ docs(README): add installation instructions...
+           Issues: Wrong scope: got README, expected readme
+
+REFACTOR LARGE
+Expected: refactor(api)
+Consistency: 0/1 (0.0%)
+  Round 1: ❌ fix(api): improve validation logic...
+           Issues: Wrong type: got fix, expected refactor
+
+STYLE FORMATTING
+Expected: style(any)
+Consistency: 0/1 (0.0%)
+  Round 1: ❌ fix(main): fix config loading...
+           Issues: Wrong type: got fix, expected style
+
+PERFORMANCE OPTIMIZATION
+Expected: perf(database)
+Consistency: 0/1 (0.0%)
+  Round 1: ❌ refactor(database): optimize user post retrieval...
+           Issues: Wrong type: got refactor, expected perf
+
+TEST ADDITION
+Expected: test(auth)
+Consistency: 1/1 (100.0%)
+  Round 1: ✅ test(auth): add login validation tests...
+
+CHORE DEPENDENCIES
+Expected: chore(any)
+Consistency: 1/1 (100.0%)
+  Round 1: ✅ chore(deps): update package versions...
+
+ADAPTIVE PROMPTING FEATURE
+Expected: feat(prompts)
+Consistency: 1/1 (100.0%)
+  Round 1: ✅ feat(prompt): add adaptive prompting strateg...
+           Issues: Wrong scope: got prompt, expected prompts
+
+
+🎯 COMMON ISSUES
+==============
+• Wrong scope: got README, expected readme: 1 times (11.1%)
+• Wrong type: got fix, expected refactor: 1 times (11.1%)
+• Wrong type: got fix, expected style: 1 times (11.1%)
+• Wrong type: got refactor, expected perf: 1 times (11.1%)
+• Wrong scope: got prompt, expected prompts: 1 times (11.1%)
+
+💡 RECOMMENDATIONS
+================
+• 🎯 Type detection accuracy needs improvement - review examples and rules
+• 🔄 Focus on improving consistency for:
+  - refactor_large: 0.0% consistent
+  - style_formatting: 0.0% consistent
+  - performance_optimization: 0.0% consistent
