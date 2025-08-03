@@ -13,69 +13,212 @@ import sys
 import urllib.request
 import urllib.error
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 
 class Config:
-    """Handles configuration management for the git commit tool."""
+    """Handles JSON-based configuration management for the git commit tool."""
     
     def __init__(self):
         self.config_dir = Path.home() / ".config" / "git-commit-ai"
-        self.config_file = self.config_dir / "config"
-        self.model_file = self.config_dir / "model"
-        self.base_url_file = self.config_dir / "base_url"
-        self.provider_file = self.config_dir / "provider"
+        self.providers_dir = self.config_dir / "providers"
+        self.main_config_file = self.config_dir / "config.json"
         
-        # Create config directory
+        # Default provider configurations
+        self.default_configs = {
+            "openrouter": {
+                "api_key": "",
+                "model": "google/gemini-flash-1.5-8b",
+                "base_url": "https://openrouter.ai/api/v1"
+            },
+            "ollama": {
+                "api_key": "",
+                "model": "qwen3:1.7b",
+                "base_url": "http://localhost:11434/api"
+            },
+            "lmstudio": {
+                "api_key": "",
+                "model": "default",
+                "base_url": "http://localhost:1234/v1"
+            },
+            "custom": {
+                "api_key": "",
+                "model": "",
+                "base_url": ""
+            }
+        }
+        
+        # Create config directories
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.providers_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.chmod(0o700)
-    
-    def save_config(self, file_path: Path, value: str) -> None:
-        """Save a configuration value to file."""
-        # Special handling for API key to remove quotes and extra arguments
-        if file_path == self.config_file:
-            value = value.split()[0]
+        self.providers_dir.chmod(0o700)
         
-        file_path.write_text(value)
-        file_path.chmod(0o600)
+        # Migrate old configuration if needed
+        self._migrate_old_config()
     
-    def get_config(self, file_path: Path, default: str = "") -> str:
-        """Get a configuration value from file."""
+    def _migrate_old_config(self) -> None:
+        """Migrate from old single-file configuration to new JSON structure."""
+        old_files = {
+            "config": self.config_dir / "config",
+            "model": self.config_dir / "model", 
+            "base_url": self.config_dir / "base_url",
+            "provider": self.config_dir / "provider"
+        }
+        
+        # Check if old config exists
+        old_config_exists = any(f.exists() for f in old_files.values())
+        
+        if old_config_exists and not self.main_config_file.exists():
+            # Read old configuration
+            old_provider = self._read_old_file(old_files["provider"], "openrouter")
+            old_api_key = self._read_old_file(old_files["config"], "")
+            old_model = self._read_old_file(old_files["model"], "")
+            old_base_url = self._read_old_file(old_files["base_url"], "")
+            
+            # Create provider config with old values
+            if old_provider in self.default_configs:
+                provider_config = self.default_configs[old_provider].copy()
+                if old_api_key:
+                    provider_config["api_key"] = old_api_key.split()[0]  # Remove extra args
+                if old_model:
+                    provider_config["model"] = old_model
+                if old_base_url:
+                    provider_config["base_url"] = old_base_url
+                
+                # Save migrated config
+                self.save_provider_config(old_provider, provider_config)
+                self.set_current_provider(old_provider)
+            
+            # Remove old files
+            for old_file in old_files.values():
+                if old_file.exists():
+                    old_file.unlink()
+    
+    def _read_old_file(self, file_path: Path, default: str = "") -> str:
+        """Read old configuration file format."""
         if file_path.exists():
             return file_path.read_text().strip()
         return default
     
-    def save_api_key(self, api_key: str) -> None:
-        """Save API key to config."""
-        self.save_config(self.config_file, api_key)
+    def _load_json_file(self, file_path: Path, default: Dict) -> Dict:
+        """Load JSON configuration file."""
+        if file_path.exists():
+            try:
+                with file_path.open('r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+        return default.copy()
     
-    def get_api_key(self) -> str:
-        """Get API key from config."""
-        return self.get_config(self.config_file)
+    def _save_json_file(self, file_path: Path, data: Dict) -> None:
+        """Save JSON configuration file."""
+        with file_path.open('w') as f:
+            json.dump(data, f, indent=2)
+        file_path.chmod(0o600)
     
-    def save_model(self, model: str) -> None:
-        """Save model to config."""
-        self.save_config(self.model_file, model)
+    def get_main_config(self) -> Dict:
+        """Get main configuration."""
+        default_main_config = {
+            "current_provider": "openrouter",
+            "version": "2.0"
+        }
+        return self._load_json_file(self.main_config_file, default_main_config)
     
-    def get_model(self) -> str:
-        """Get model from config."""
-        return self.get_config(self.model_file)
+    def save_main_config(self, config: Dict) -> None:
+        """Save main configuration."""
+        self._save_json_file(self.main_config_file, config)
     
-    def save_base_url(self, base_url: str) -> None:
-        """Save base URL to config."""
-        self.save_config(self.base_url_file, base_url)
+    def get_provider_config_file(self, provider: str) -> Path:
+        """Get path to provider configuration file."""
+        return self.providers_dir / f"{provider}.json"
     
-    def get_base_url(self) -> str:
-        """Get base URL from config."""
-        return self.get_config(self.base_url_file, "https://openrouter.ai/api/v1")
+    def get_provider_config(self, provider: str) -> Dict:
+        """Get provider configuration."""
+        if provider not in self.default_configs:
+            raise ValueError(f"Unknown provider: {provider}")
+        
+        config_file = self.get_provider_config_file(provider)
+        return self._load_json_file(config_file, self.default_configs[provider])
     
-    def save_provider(self, provider: str) -> None:
-        """Save provider to config."""
-        self.save_config(self.provider_file, provider)
+    def save_provider_config(self, provider: str, config: Dict) -> None:
+        """Save provider configuration."""
+        if provider not in self.default_configs:
+            raise ValueError(f"Unknown provider: {provider}")
+        
+        config_file = self.get_provider_config_file(provider)
+        self._save_json_file(config_file, config)
+    
+    def get_current_provider(self) -> str:
+        """Get current provider."""
+        main_config = self.get_main_config()
+        return main_config.get("current_provider", "openrouter")
+    
+    def set_current_provider(self, provider: str) -> None:
+        """Set current provider."""
+        if provider not in self.default_configs:
+            raise ValueError(f"Unknown provider: {provider}")
+        
+        main_config = self.get_main_config()
+        main_config["current_provider"] = provider
+        self.save_main_config(main_config)
+    
+    def get_api_key(self, provider: Optional[str] = None) -> str:
+        """Get API key for provider."""
+        if provider is None:
+            provider = self.get_current_provider()
+        config = self.get_provider_config(provider)
+        return config.get("api_key", "")
+    
+    def save_api_key(self, api_key: str, provider: Optional[str] = None) -> None:
+        """Save API key for provider."""
+        if provider is None:
+            provider = self.get_current_provider()
+        
+        # Clean API key (remove quotes and extra arguments)
+        api_key = api_key.split()[0] if api_key else ""
+        
+        config = self.get_provider_config(provider)
+        config["api_key"] = api_key
+        self.save_provider_config(provider, config)
+    
+    def get_model(self, provider: Optional[str] = None) -> str:
+        """Get model for provider."""
+        if provider is None:
+            provider = self.get_current_provider()
+        config = self.get_provider_config(provider)
+        return config.get("model", "")
+    
+    def save_model(self, model: str, provider: Optional[str] = None) -> None:
+        """Save model for provider."""
+        if provider is None:
+            provider = self.get_current_provider()
+        config = self.get_provider_config(provider)
+        config["model"] = model
+        self.save_provider_config(provider, config)
+    
+    def get_base_url(self, provider: Optional[str] = None) -> str:
+        """Get base URL for provider."""
+        if provider is None:
+            provider = self.get_current_provider()
+        config = self.get_provider_config(provider)
+        return config.get("base_url", "")
+    
+    def save_base_url(self, base_url: str, provider: Optional[str] = None) -> None:
+        """Save base URL for provider."""
+        if provider is None:
+            provider = self.get_current_provider()
+        config = self.get_provider_config(provider)
+        config["base_url"] = base_url
+        self.save_provider_config(provider, config)
     
     def get_provider(self) -> str:
-        """Get provider from config."""
-        return self.get_config(self.provider_file, "openrouter")
+        """Get current provider (for backward compatibility)."""
+        return self.get_current_provider()
+    
+    def save_provider(self, provider: str) -> None:
+        """Save provider (for backward compatibility)."""
+        self.set_current_provider(provider)
 
 
 class GitCommitAI:
@@ -108,9 +251,10 @@ class GitCommitAI:
         self.dry_run = False
         
         # Load configuration
-        self.provider = self.config.get_provider()
-        self.base_url = self.config.get_base_url()
-        self.model = self.config.get_model()
+        self.provider = self.config.get_current_provider()
+        provider_config = self.config.get_provider_config(self.provider)
+        self.base_url = provider_config.get("base_url", "")
+        self.model = provider_config.get("model", "")
         
         # Set default model if not configured
         if not self.model and self.provider in self.DEFAULT_MODELS:
@@ -131,9 +275,14 @@ class GitCommitAI:
         self.base_url = base_url
         self.model = model
         
-        self.config.save_provider(provider)
-        self.config.save_base_url(base_url)
-        self.config.save_model(model)
+        # Get current provider config and update it
+        provider_config = self.config.get_provider_config(provider)
+        provider_config["base_url"] = base_url
+        provider_config["model"] = model
+        
+        # Save provider config and set as current
+        self.config.save_provider_config(provider, provider_config)
+        self.config.set_current_provider(provider)
     
     def check_ollama_requirements(self) -> None:
         """Check if Ollama is running and model exists."""
@@ -337,8 +486,8 @@ Note: Diff content was too large to include. Please generate commit message base
         headers = {"Content-Type": "application/json"}
         
         if self.provider == "ollama":
-            endpoint = "api/generate"
-            url = f"{self.PROVIDER_URLS['ollama']}/{endpoint}"
+            endpoint = "generate"
+            url = f"{self.base_url}/{endpoint}"
             request_data = self.build_ollama_request(changes, diff, use_diff, detailed_changes)
         elif self.provider == "lmstudio":
             endpoint = "chat/completions"
@@ -516,14 +665,14 @@ Examples:
     # Handle configuration updates
     if args.model:
         app.model = args.model.strip('"')
-        app.config.save_model(app.model)
+        app.config.save_model(app.model, app.provider)
     
     if args.base_url:
         app.base_url = args.base_url
-        app.config.save_base_url(app.base_url)
+        app.config.save_base_url(app.base_url, app.provider)
     
     if args.api_key:
-        app.config.save_api_key(args.api_key)
+        app.config.save_api_key(args.api_key, app.provider)
     
     app.run(args)
 
