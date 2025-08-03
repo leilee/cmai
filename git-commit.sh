@@ -12,6 +12,8 @@ DEBUG=false
 PUSH=false
 # Stage changes flag
 STAGE_CHANGES=true
+# Dry run flag
+DRY_RUN=false
 # Default providers and URLs
 PROVIDER_OPENROUTER="openrouter"
 PROVIDER_OLLAMA="ollama"
@@ -23,7 +25,7 @@ OLLAMA_URL="http://localhost:11434/api"
 LMSTUDIO_URL="http://localhost:1234/v1"
 
 # Default models for providers
-OLLAMA_MODEL="codellama"
+OLLAMA_MODEL="qwen3:1.7b"
 OPENROUTER_MODEL="google/gemini-flash-1.5-8b"
 LMSTUDIO_MODEL="default"
 
@@ -112,11 +114,6 @@ json_escape() {
     python3 -c 'import json, sys; print(json.dumps(sys.stdin.read()))'
 }
 
-# Replace all linebreaks with proper JSON escaping
-function replace_linebreaks() {
-    local input="$1"
-    printf '%s' "$input" | tr '\n' '\\n' | sed 's/\n$//'
-}
 
 # Function to setup provider configuration
 setup_provider() {
@@ -198,6 +195,10 @@ while [[ $# -gt 0 ]]; do
         STAGE_CHANGES=false
         shift
         ;;
+    --dry-run)
+        DRY_RUN=true
+        shift
+        ;;
     -h | --help)
         echo "Usage: cmai [options] [api_key]"
         echo ""
@@ -205,6 +206,7 @@ while [[ $# -gt 0 ]]; do
         echo "  --debug               Enable debug mode"
         echo "  --push, -p            Push changes after commit"
         echo "  --no-stage            Do not stage changes automatically"
+        echo "  --dry-run             Preview commit message without executing git commit"
         echo "  --model <model>       Use specific model (default: google/gemini-flash-1.5-8b)"
         echo "  --use-ollama          Use Ollama as provider (saves for future use)"
         echo "  --use-openrouter      Use OpenRouter as provider (saves for future use)"
@@ -341,8 +343,7 @@ if [ -z "$CHANGES" ]; then
     exit 1
 fi
 
-# Remove all linebreaks from CHANGES
-CHANGES=$(replace_linebreaks "$CHANGES")
+# Keep CHANGES as raw content for proper JSON escaping
 
 # Set model based on provider if not explicitly specified
 if [ -z "$MODEL" ]; then
@@ -359,22 +360,8 @@ if [ -z "$MODEL" ]; then
     esac
 fi
 
-# Format changes into a single line and replace \M with newlines
-# Also escape backslashes for JSON compatibility
-FORMATTED_CHANGES=$(echo "$CHANGES" | sed 's/\\M/\n/g' | tr '\n' ' ' | sed 's/  */ /g' | sed 's/\\/\\\\/g')
-
-# Create a simplified diff for LMStudio that avoids JSON escaping issues
-# Extract only the file names and modification types and replace \M with newlines
-SIMPLIFIED_DIFF=$(echo "$CHANGES" | sed 's/\\M/\n/g' | sed 's/^\([A-Z]\) \(.*\)$/\1: \2/' | tr '\n' ' ')
-
-# Format diff for other providers
-# Replace newlines with \n, and both \M and \nM with \n, then escape double quotes
-FORMATTED_DIFF=$(echo "$DIFF_CONTENT" | tr '\n' '\\n' | sed 's/\\M/\\n/g' | sed 's/\\nM/\\n/g' | sed 's/"/\\"/g')
-
-# Format detailed changes for large diffs
-if [ "$USE_DIFF_CONTENT" = "false" ]; then
-    FORMATTED_DETAILED_CHANGES=$(echo "$DETAILED_CHANGES" | tr '\n' '\\n' | sed 's/"/\\"/g')
-fi
+# All providers now use raw content with proper JSON escaping
+# No pre-formatting needed since json_escape handles everything
 
 # Common prompt instructions
 COMMON_INSTRUCTIONS="Follow the conventional commits format: <type>(<scope>): <subject>\n\n<body>\n\nWhere type is one of: feat, fix, docs, style, refactor, perf, test, chore.\n- Scope: max 3 words.\n- Keep the subject under 70 chars.\n- Body: list changes to explain what and why\n- Use 'fix' for minor changes\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
@@ -391,10 +378,64 @@ build_openrouter_request() {
     local detailed_changes="$5"
     
     if [ "$use_diff" = "true" ]; then
-        local user_content="Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$changes\n</file_changes>\n\n## Diff:\n<diff>\n$diff\n</diff>\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+        local user_content="Generate a commit message for these changes:
+
+## File changes:
+<file_changes>
+$changes
+</file_changes>
+
+## Diff:
+<diff>
+$diff
+</diff>
+
+## Format:
+<type>(<scope>): <subject>
+
+<body>
+
+Important:
+- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
+- Subject: max 70 characters, imperative mood, no period
+- Body: list changes to explain what and why, not how
+- Scope: max 3 words
+- For minor changes: use 'fix' instead of 'feat'
+- Do not wrap your response in triple backticks
+- Response should be the commit message only, no explanations."
     else
-        local user_content="Generate a commit message for these changes:\n\n## File changes:\n<file_changes>\n$changes\n</file_changes>\n\n## File statistics:\n<file_stats>\n$detailed_changes\n</file_stats>\n\nNote: Diff content was too large to include. Please generate commit message based on file changes and statistics only.\n\n## Format:\n<type>(<scope>): <subject>\n\n<body>\n\nImportant:\n- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore\n- Subject: max 70 characters, imperative mood, no period\n- Body: list changes to explain what and why, not how\n- Scope: max 3 words\n- For minor changes: use 'fix' instead of 'feat'\n- Do not wrap your response in triple backticks\n- Response should be the commit message only, no explanations."
+        local user_content="Generate a commit message for these changes:
+
+## File changes:
+<file_changes>
+$changes
+</file_changes>
+
+## File statistics:
+<file_stats>
+$detailed_changes
+</file_stats>
+
+Note: Diff content was too large to include. Please generate commit message based on file changes and statistics only.
+
+## Format:
+<type>(<scope>): <subject>
+
+<body>
+
+Important:
+- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
+- Subject: max 70 characters, imperative mood, no period
+- Body: list changes to explain what and why, not how
+- Scope: max 3 words
+- For minor changes: use 'fix' instead of 'feat'
+- Do not wrap your response in triple backticks
+- Response should be the commit message only, no explanations."
     fi
+    
+    # Properly escape the user content for JSON
+    local user_content_escaped=$(echo "$user_content" | json_escape)
+    local system_message_escaped=$(echo "$SYSTEM_MESSAGE" | json_escape)
     
     cat <<EOF
 {
@@ -403,11 +444,11 @@ build_openrouter_request() {
   "messages": [
     {
       "role": "system",
-      "content": "$SYSTEM_MESSAGE"
+      "content": $system_message_escaped
     },
     {
       "role": "user",
-      "content": "$user_content"
+      "content": $user_content_escaped
     }
   ]
 }
@@ -463,16 +504,44 @@ case "$PROVIDER" in
     BASE_URL="http://localhost:11434"
     
     if [ "$USE_DIFF_CONTENT" = "true" ]; then
-        OLLAMA_PROMPT="Generate a conventional commit message for these changes: \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## Diff:\n<diff>\n$FORMATTED_DIFF\n</diff>\n\n## Instructions:\n$COMMON_INSTRUCTIONS"
+        OLLAMA_PROMPT="Generate a conventional commit message for these changes: 
+<file_changes>
+$CHANGES
+</file_changes>
+
+## Diff:
+<diff>
+$DIFF_CONTENT
+</diff>
+
+## Instructions:
+$COMMON_INSTRUCTIONS"
     else
-        OLLAMA_PROMPT="Generate a conventional commit message for these changes: \n<file_changes>\n$FORMATTED_CHANGES.\n</file_changes>\n\n## File statistics:\n<file_stats>\n$FORMATTED_DETAILED_CHANGES\n</file_stats>\n\nNote: Diff content was too large to include. Please generate commit message based on file changes and statistics only.\n\n## Instructions:\n$COMMON_INSTRUCTIONS"
+        OLLAMA_PROMPT="Generate a conventional commit message for these changes: 
+<file_changes>
+$CHANGES
+</file_changes>
+
+## File statistics:
+<file_stats>
+$DETAILED_CHANGES
+</file_stats>
+
+Note: Diff content was too large to include. Please generate commit message based on file changes and statistics only.
+
+## Instructions:
+$COMMON_INSTRUCTIONS"
     fi
+    
+    # Use json_escape to properly escape the prompt for JSON
+    OLLAMA_PROMPT_ESCAPED=$(echo "$OLLAMA_PROMPT" | json_escape)
     
     REQUEST_BODY=$(
         cat <<EOF
 {
   "model": "$MODEL",
-  "prompt": "$OLLAMA_PROMPT",
+  "prompt": $OLLAMA_PROMPT_ESCAPED,
+  "think": false,
   "stream": false
 }
 EOF
@@ -484,9 +553,9 @@ EOF
     HEADERS=(-H "Content-Type: application/json")
 
     if [ "$USE_DIFF_CONTENT" = "true" ]; then
-        USER_CONTENT=$(build_user_content_lmstudio "$FORMATTED_CHANGES" "$SIMPLIFIED_DIFF" "$USE_DIFF_CONTENT" "")
+        USER_CONTENT=$(build_user_content_lmstudio "$CHANGES" "$DIFF_CONTENT" "$USE_DIFF_CONTENT" "")
     else
-        USER_CONTENT=$(build_user_content_lmstudio "$FORMATTED_CHANGES" "" "$USE_DIFF_CONTENT" "$DETAILED_CHANGES")
+        USER_CONTENT=$(build_user_content_lmstudio "$CHANGES" "" "$USE_DIFF_CONTENT" "$DETAILED_CHANGES")
     fi
     USER_CONTENT_ESCAPED=$(echo "$USER_CONTENT" | json_escape)
     
@@ -517,13 +586,13 @@ EOF
         "Content-Type: application/json"
         "X-Title: cmai - AI Commit Message Generator"
     )
-    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF" "$USE_DIFF_CONTENT" "$FORMATTED_DETAILED_CHANGES")
+    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$CHANGES" "$DIFF_CONTENT" "$USE_DIFF_CONTENT" "$DETAILED_CHANGES")
     ;;
 "$PROVIDER_CUSTOM")
     debug_log "Making API request to custom provider"
     ENDPOINT="chat/completions"
     [ ! -z "$API_KEY" ] && HEADERS=(-H "Authorization: Bearer ${API_KEY}")
-    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$FORMATTED_CHANGES" "$FORMATTED_DIFF" "$USE_DIFF_CONTENT" "$FORMATTED_DETAILED_CHANGES")
+    REQUEST_BODY=$(build_openrouter_request "$MODEL" "$CHANGES" "$DIFF_CONTENT" "$USE_DIFF_CONTENT" "$DETAILED_CHANGES")
     ;;
 esac
 
@@ -630,27 +699,35 @@ if [ -z "$COMMIT_FULL" ]; then
     exit 1
 fi
 
-# Execute git commit
-debug_log "Executing git commit"
-git commit -m "$COMMIT_FULL"
-
-if [ $? -ne 0 ]; then
-    echo "Failed to commit changes"
-    exit 1
-fi
-
-# Push to origin if flag is set
-if [ "$PUSH" = true ]; then
-    debug_log "Pushing to origin"
-    git push origin
+# Execute git commit or preview in dry-run mode
+if [ "$DRY_RUN" = true ]; then
+    echo "Dry run mode - Generated commit message:"
+    echo "======================================="
+    echo "$COMMIT_FULL"
+    echo "======================================="
+    echo "Use 'cmai' without --dry-run to execute the commit."
+else
+    debug_log "Executing git commit"
+    git commit -m "$COMMIT_FULL"
 
     if [ $? -ne 0 ]; then
-        echo "Failed to push changes"
+        echo "Failed to commit changes"
         exit 1
     fi
-    echo "Successfully pushed changes to origin"
-fi
 
-echo "Successfully committed and pushed changes with message:"
-echo "$COMMIT_FULL"
+    # Push to origin if flag is set
+    if [ "$PUSH" = true ]; then
+        debug_log "Pushing to origin"
+        git push origin
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to push changes"
+            exit 1
+        fi
+        echo "Successfully pushed changes to origin"
+    fi
+
+    echo "Successfully committed changes with message:"
+    echo "$COMMIT_FULL"
+fi
 debug_log "Script completed successfully"
