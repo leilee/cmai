@@ -1,4 +1,5 @@
-Generate a conventional commit message for these changes: 
+🎯 TASK: Generate commit message for ACTUAL file changes only!
+
 <file_changes>
 {changes}
 </file_changes>

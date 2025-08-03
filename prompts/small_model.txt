@@ -1,34 +1,19 @@
-Generate a conventional commit message in this format:
+Generate conventional commit message:
 <type>(<scope>): <subject>
 
 <body>
 
-EXAMPLES:
+CORE RULES:
+- MUST have empty line between subject and body
+- Types: feat, fix, docs, style, chore, perf, test, refactor
+- Use bullet points for body
 
-fix(utils): improve email validation logic
-
-- Add missing domain check to prevent invalid emails
-
-feat(api): add user profile endpoints  
-
-- Implement GET/PUT /api/users/{id}/profile for management
-
-docs(readme): add installation instructions
-
-- Include pip and source installation methods
-
-style(main): fix spacing and formatting
-
-- Add missing spaces around operators
-
-chore(deps): update security dependencies
-
-- Upgrade vulnerable packages to latest versions
-
-RULES:
-- Use the RIGHT type: fix, feat, docs, style, chore, perf, test, refactor
-- Match the change to the right example above
-- Output format: type(scope): subject + body
-- NO code blocks, NO extra explanations
-
-OUTPUT ONLY THE COMMIT MESSAGE!
+TYPE GUIDE:
+• feat = new features/capabilities
+• fix = bug fixes, broken functionality  
+• docs = documentation changes
+• style = formatting, spacing, indentation
+• refactor = major restructuring
+• perf = performance optimization
+• test = adding/modifying tests
+• chore = dependencies, build config
