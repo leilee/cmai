@@ -421,6 +421,109 @@ Note: Diff content was too large to include. Please generate commit message base
         # Default to medium for unknown models
         return 'medium'
     
+    def detect_change_context(self, changes: str, diff: str) -> str:
+        """Provide smart context hints for medium/small models based on actual changes."""
+        hints = []
+        
+        # Format detection - spacing, indentation changes
+        if self._is_formatting_change(diff):
+            hints.append("🎨 Spacing/formatting detected → use 'style' NOT 'fix'")
+        
+        # Dependency update detection
+        if self._is_dependency_change(changes):
+            hints.append("🧹 Dependencies detected → use 'chore' NOT 'fix'")
+        
+        # Performance optimization detection
+        if self._is_performance_change(diff):
+            hints.append("⚡ Performance optimization → use 'perf' NOT 'refactor'")
+        
+        # Large refactor detection
+        if self._is_large_refactor(changes):
+            hints.append("🏗️ Multiple files changed → likely 'refactor' NOT 'fix'")
+        
+        return "\n".join(hints) if hints else ""
+    
+    def _is_formatting_change(self, diff: str) -> bool:
+        """Detect if changes are formatting-related."""
+        import re
+        
+        # Look for spacing pattern changes
+        spacing_patterns = [
+            r'[<>=!]\s*→\s*[<>=!]\s+',  # a<b → a < b, a=b → a = b
+            r'^\+.*\s+$',               # Lines with added trailing spaces
+            r'^\-\s*\+\s*',             # Indentation changes
+        ]
+        
+        # Check for common formatting indicators
+        formatting_indicators = [
+            ' < ', ' > ', ' = ', ' + ', ' - ',  # Operator spacing
+            'spacing', 'indentation', 'format',
+        ]
+        
+        # Pattern-based detection
+        for pattern in spacing_patterns:
+            if re.search(pattern, diff, re.MULTILINE):
+                return True
+        
+        # Content-based detection
+        for indicator in formatting_indicators:
+            if indicator in diff.lower():
+                return True
+        
+        return False
+    
+    def _is_dependency_change(self, changes: str) -> bool:
+        """Detect if changes involve dependency files."""
+        dep_files = [
+            'requirements.txt', 'package.json', 'package-lock.json',
+            'yarn.lock', 'Pipfile', 'Pipfile.lock', 'setup.py',
+            'pyproject.toml', 'Cargo.toml', 'Cargo.lock',
+            '.yml', '.yaml', 'docker', 'Dockerfile'
+        ]
+        
+        changes_lower = changes.lower()
+        return any(dep_file in changes_lower for dep_file in dep_files)
+    
+    def _is_performance_change(self, diff: str) -> bool:
+        """Detect if changes are performance-related."""
+        diff_lower = diff.lower()
+        
+        # Specific pattern: loop elimination for database queries
+        loop_to_query_patterns = [
+            'for post in' in diff_lower and 'append' in diff_lower,
+            'for item in' in diff_lower and 'list(' in diff_lower,
+            ('posts = []' in diff_lower and 'return list(' in diff_lower),
+            ('select_related' in diff_lower or 'prefetch_related' in diff_lower)
+        ]
+        
+        if any(loop_to_query_patterns):
+            return True
+            
+        # General performance keywords
+        perf_keywords = [
+            'optimize', 'optimization', 'cache', 'caching', 'performance',
+            'speed', 'faster', 'efficient', 'inefficient', 'query performance'
+        ]
+        
+        return any(keyword in diff_lower for keyword in perf_keywords)
+    
+    def _is_large_refactor(self, changes: str) -> bool:
+        """Detect if changes involve large refactoring."""
+        # Count number of files changed
+        file_count = len([line for line in changes.split('\n') if line.strip()])
+        
+        # Large refactor indicators
+        refactor_keywords = [
+            'restructure', 'refactor', 'reorganize', 'split',
+            'architecture', 'modular', 'separate'
+        ]
+        
+        changes_lower = changes.lower()
+        has_refactor_keywords = any(keyword in changes_lower for keyword in refactor_keywords)
+        
+        # Consider it a large refactor if multiple files OR refactor keywords
+        return file_count >= 3 or has_refactor_keywords
+    
     def load_prompt_template(self, filename: str) -> str:
         """Load prompt template from external file."""
         try:
@@ -462,12 +565,17 @@ Note: Diff content was too large to include. Please generate commit message base
         if not instructions:
             raise FileNotFoundError(f"Required prompt template '{model_tier}_model.txt' not found")
         
-        # Add final check for medium and small models
-        final_check = ""
+        # 🔥 Smart enhancement ONLY for medium/small models
         if model_tier in ['medium', 'small']:
+            # Add intelligent context hints based on actual changes
+            smart_hints = self.detect_change_context(changes, diff)
+            if smart_hints:
+                instructions += f"\n\n🎯 SMART CONTEXT HINTS:\n{smart_hints}"
+            
+            # Add final check for medium and small models
             final_check_template = self.load_prompt_template("final_check.txt")
             if final_check_template:
-                final_check = f"\n\n{final_check_template}"
+                instructions += f"\n\n{final_check_template}"
         
         # Load base prompt template
         base_template = self.load_prompt_template("ollama_base.txt")
@@ -493,7 +601,7 @@ Note: Diff content was too large to include. Please generate commit message base
             changes=changes,
             diff_section=diff_section,
             instructions=instructions,
-            final_check=final_check
+            final_check=""  # final_check is now handled within instructions
         )
         
         return {
