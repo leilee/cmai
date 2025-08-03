@@ -1,0 +1,81 @@
+
+🤖 Multi-Model Commit Message Generation Comparison
+Generated: 2025-08-03 15:14:46
+Test Rounds per Model: 2
+
+📊 CROSS-MODEL PERFORMANCE SUMMARY
+=================================
+
+Model               | Format | Type  | Overall
+--------------------|--------|-------|--------
+ollama:qwen3:4b     | 100.0% | 50.0% |   50.0%
+ollama:qwen2.5:3b   | 100.0% | 12.5% |   12.5%
+ollama:qwen3:1.7b   | 100.0% | 12.5% |   12.5%
+
+🏆 Best Overall: ollama:qwen3:4b (50.0%)
+
+🔍 SCENARIO-BY-SCENARIO BREAKDOWN
+=================================
+
+SIMPLE FIX
+Expected: fix(utils)
+  ollama:qwen3:4b: 100.0% ✅ fix(utils)
+  ollama:qwen2.5:3b: 100.0% ✅ fix(utils)
+  ollama:qwen3:1.7b: 100.0% ✅ fix(utils)
+
+NEW FEATURE
+Expected: feat(auth)
+  ollama:qwen3:4b: 100.0% ✅ feat(auth)
+  ollama:qwen2.5:3b:   0.0% ❌ fix(auth)
+  ollama:qwen3:1.7b:   0.0% ❌ fix(auth)
+
+DOCUMENTATION UPDATE
+Expected: docs(readme)
+  ollama:qwen3:4b: 100.0% ✅ docs(README)
+  ollama:qwen2.5:3b:   0.0% ❌ fix(README.md)
+  ollama:qwen3:1.7b:   0.0% ❌ feat(docs)
+
+REFACTOR LARGE
+Expected: refactor(api)
+  ollama:qwen3:4b:   0.0% ❌ fix(api)
+  ollama:qwen2.5:3b:   0.0% ❌ fix(api)
+  ollama:qwen3:1.7b:   0.0% ❌ fix(api)
+
+STYLE FORMATTING
+Expected: style(any)
+  ollama:qwen3:4b:   0.0% ❌ fix(main)
+  ollama:qwen2.5:3b:   0.0% ❌ fix(src/main.py)
+  ollama:qwen3:1.7b:   0.0% ❌ fix(config)
+
+PERFORMANCE OPTIMIZATION
+Expected: perf(database)
+  ollama:qwen3:4b:   0.0% ❌ fix(database)
+  ollama:qwen2.5:3b:   0.0% ❌ fix(database)
+  ollama:qwen3:1.7b:   0.0% ❌ fix(database)
+
+TEST ADDITION
+Expected: test(auth)
+  ollama:qwen3:4b: 100.0% ✅ test(auth)
+  ollama:qwen2.5:3b:   0.0% ❌ fix(test)
+  ollama:qwen3:1.7b:   0.0% ❌ fix(auth)
+
+CHORE DEPENDENCIES
+Expected: chore(any)
+  ollama:qwen3:4b:   0.0% ❌ fix(dependencies)
+  ollama:qwen2.5:3b:   0.0% ❌ fix(requirements)
+  ollama:qwen3:1.7b:   0.0% ❌ fix(requirements)
+
+🎯 CROSS-MODEL ISSUE PATTERNS
+============================
+• Wrong type: got fix, expected chore: ollama:qwen3:4b(2) ollama:qwen2.5:3b(2) ollama:qwen3:1.7b(2)
+• Wrong type: got fix, expected feat: ollama:qwen2.5:3b(2) ollama:qwen3:1.7b(2)
+• Wrong type: got fix, expected perf: ollama:qwen3:4b(2) ollama:qwen2.5:3b(2) ollama:qwen3:1.7b(2)
+• Wrong type: got fix, expected refactor: ollama:qwen3:4b(2) ollama:qwen2.5:3b(2) ollama:qwen3:1.7b(1)
+• Wrong type: got fix, expected style: ollama:qwen3:4b(2) ollama:qwen2.5:3b(2) ollama:qwen3:1.7b(2)
+• Wrong type: got fix, expected test: ollama:qwen2.5:3b(2) ollama:qwen3:1.7b(2)
+
+💡 CROSS-MODEL INSIGHTS
+======================
+• 🚨 Large performance gap (50.0% - 12.5%) suggests model-specific overfitting
+• ✅ Format rules generalize well across models
+• 📈 Consider model size vs accuracy tradeoff for deployment
