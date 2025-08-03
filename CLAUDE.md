@@ -93,9 +93,9 @@ The project uses a single Python implementation (`git-commit.py`):
 ### Template System
 
 Located in `prompts/` directory:
-- `small_model.txt` - For models <7B parameters
-- `medium_model.txt` - For models 7B-30B parameters  
-- `large_model.txt` - For models >30B parameters
+- `small_model.txt` - For models ≤2B parameters (1b, 1.7b, 2b)
+- `medium_model.txt` - For models 3-10B parameters (3b, 4b, 7b, 8b)
+- `large_model.txt` - For models ≥30B parameters (30b, 32b, 70b, 72b)
 - `final_check.txt` - Post-processing validation
 - Provider-specific templates: `openrouter_system.txt`, `ollama_base.txt`
 
@@ -111,7 +111,7 @@ Located in `prompts/` directory:
 
 The system automatically detects optimal prompting strategies:
 ```python
-def determine_model_size(self, model: str) -> str:
+def get_model_tier(self) -> str:
     # Logic to classify models as small/medium/large
     # Based on known model parameter counts
 ```

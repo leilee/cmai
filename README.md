@@ -99,8 +99,8 @@ cmai <your_openrouter_api_key>
 ```
 
 The API key will be securely stored in:
-- Linux/macOS: `~/.config/git-commit-ai/config`
-- Windows: `%USERPROFILE%\.config\git-commit-ai\config`
+- Linux/macOS: `~/.config/git-commit-ai/providers/openrouter.json`
+- Windows: `%USERPROFILE%\.config\git-commit-ai\providers\openrouter.json`
 
 ### Ollama (Local)
 
@@ -449,7 +449,7 @@ Reports are saved to `tests/test_report_YYYYMMDD_HHMMSS.txt` and also displayed 
 
 2. **For OpenRouter models**: Ensure API key is configured
    ```bash
-   cmai --api-key your_openrouter_api_key
+   cmai --api-key your_api_key
    ```
 
 ## Contributing
