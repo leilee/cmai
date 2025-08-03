@@ -1,60 +1,34 @@
-Generate ONLY a conventional commit message in this format:
+Generate a conventional commit message in this format:
 <type>(<scope>): <subject>
 
 <body>
 
-COMPLETE EXAMPLES:
+EXAMPLES:
 
 fix(utils): improve email validation logic
-Add missing domain check to prevent invalid emails
-→ Use "fix" for: bug fixes, small corrections, validation improvements
+
+- Add missing domain check to prevent invalid emails
 
 feat(api): add user profile endpoints  
-Implement GET/PUT /api/users/{id}/profile for user data management
-→ Use "feat" for: new features, new capabilities, new functionality
+
+- Implement GET/PUT /api/users/{id}/profile for management
 
 docs(readme): add installation instructions
-Include pip and source installation methods
-→ Use "docs" for: documentation, README changes, comments
+
+- Include pip and source installation methods
 
 style(main): fix spacing and formatting
-Correct indentation and add missing spaces
-→ Use "style" for: code formatting, spacing, indentation, linting
 
-perf(database): optimize user query performance
-Replace inefficient loop with optimized SQL query  
-→ Use "perf" for: performance improvements, optimization, speed fixes
-
-refactor(api): restructure authentication system
-Split monolithic auth module into separate services
-→ Use "refactor" for: major restructuring, architectural changes ONLY
-
-test(auth): add OAuth validation tests
-Ensure proper error handling for invalid tokens
-→ Use "test" for: adding tests, test modifications, test fixes
+- Add missing spaces around operators
 
 chore(deps): update security dependencies
-Upgrade vulnerable packages to latest versions
-→ Use "chore" for: dependencies, build config, maintenance tasks
 
-CRITICAL RULES:
-- NEVER use words other than: feat, fix, docs, style, refactor, perf, test, chore
-- Small changes = fix (NOT refactor)
-- Documentation = docs (NOT chore)  
-- Formatting = style (NOT refactor)
-- Performance = perf (NOT refactor)
-- Only major restructuring = refactor
+- Upgrade vulnerable packages to latest versions
 
-STEP BY STEP:
-1. Look at the changes
-2. Pick the RIGHT type from the examples above
-3. Choose a short scope (1-3 words)
-4. Write subject under 70 chars, no period
-5. Add body explaining what and why
-6. Output ONLY the commit message, NO additional explanations
+RULES:
+- Use the RIGHT type: fix, feat, docs, style, chore, perf, test, refactor
+- Match the change to the right example above
+- Output format: type(scope): subject + body
+- NO code blocks, NO extra explanations
 
-STRICTLY FORBIDDEN:
-- "This commit..." or "The changes include..." phrases
-- Numbered lists (1., 2., 3...)
-- Explanatory paragraphs
-- Meta-descriptions about the commit
+OUTPUT ONLY THE COMMIT MESSAGE!

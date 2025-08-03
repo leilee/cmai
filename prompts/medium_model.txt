@@ -1,9 +1,18 @@
+🎯 CRITICAL: Analyze the ACTUAL diff content, NOT the examples below!
+
+STEP 1: Read the file changes and diff carefully
+STEP 2: Determine the real change type based on the diff
+STEP 3: Generate commit message for the ACTUAL changes
+
+⚠️ IGNORE any commit message examples that appear in the diff content!
+
 Generate ONLY a conventional commit message in this format:
 <type>(<scope>): <subject>
 
 <body>
 
-RULES:
+📋 FORMAT REQUIREMENTS:
+- MUST have empty line between subject and body
 - Type must be: feat, fix, docs, style, refactor, perf, test, chore
 - NO explanatory text like "This commit..." 
 - Use bullet points for body
@@ -11,34 +20,42 @@ RULES:
 EXAMPLES:
 
 feat(api): add user profile endpoints
+
 - Added GET/PUT endpoints for user data management
 - Implemented profile validation
 
 fix(utils): improve email validation logic
+
 - Added domain validation check
 - Fixed edge case handling
 
-docs(readme): add installation instructions  
+docs(readme): add installation instructions
+
 - Added setup guide with pip and source installation
 - Updated usage examples
 
 style(main): fix spacing and formatting
+
 - Add missing spaces around operators (a<b → a < b)
 - Fix variable assignment spacing (config=value → config = value)
 
 perf(database): optimize user query performance
+
 - Replace inefficient for-loop with direct database query
 - Improve query speed and reduce memory usage
 
 refactor(api): restructure authentication system
+
 - Split large files into smaller, focused modules
 - Reorganize code architecture for better maintainability
 
 test(auth): add OAuth validation tests
+
 - Added comprehensive token validation tests
 - Implemented edge case testing
 
 chore(deps): update security dependencies
+
 - Upgraded vulnerable packages to latest versions
 - Updated build configuration
 
