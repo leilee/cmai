@@ -1,31 +1,18 @@
 #!/bin/bash
 
-# Default version to install
-VERSION="py"  # Default to Python version
-
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --sh|--bash)
-            VERSION="sh"
-            shift
-            ;;
-        --py|--python)
-            VERSION="py"
-            shift
-            ;;
         -h|--help)
-            echo "Usage: $0 [--sh|--bash|--py|--python] [-h|--help]"
+            echo "Usage: $0 [-h|--help]"
+            echo ""
+            echo "Installs the Python version of cmai (AI commit message generator)"
             echo ""
             echo "Options:"
-            echo "  --sh, --bash     Install bash version (git-commit.sh)"
-            echo "  --py, --python   Install Python version (git-commit.py) [default]"
             echo "  -h, --help       Show this help message"
             echo ""
-            echo "Examples:"
-            echo "  $0               # Install Python version (default)"
-            echo "  $0 --py          # Install Python version"
-            echo "  $0 --sh          # Install bash version"
+            echo "Example:"
+            echo "  $0               # Install Python version"
             exit 0
             ;;
         *)
@@ -50,14 +37,9 @@ case "$(uname)" in
         ;;
 esac
 
-# Configuration based on version
-if [ "$VERSION" = "py" ]; then
-    SCRIPT_NAME="git-commit.py"
-    SCRIPT_TYPE="Python"
-else
-    SCRIPT_NAME="git-commit.sh"
-    SCRIPT_TYPE="Bash"
-fi
+# Configuration
+SCRIPT_NAME="git-commit.py"
+SCRIPT_TYPE="Python"
 
 if [ "$OS" = "windows" ]; then
     SCRIPT_DIR="$USERPROFILE/git-commit-ai"
@@ -83,13 +65,13 @@ fi
 SOURCE_SCRIPT="$(dirname "$0")/$SCRIPT_NAME"
 if [ ! -f "$SOURCE_SCRIPT" ]; then
     echo "Error: $SCRIPT_NAME not found in the current directory."
-    echo "Please ensure both git-commit.sh and git-commit.py are in the same directory as install.sh"
+    echo "Please ensure git-commit.py is in the same directory as install.sh"
     exit 1
 fi
 
-# Check for prompts directory if installing Python version
+# Check for prompts directory
 SOURCE_PROMPTS_DIR="$(dirname "$0")/prompts"
-if [ "$VERSION" = "py" ] && [ ! -d "$SOURCE_PROMPTS_DIR" ]; then
+if [ ! -d "$SOURCE_PROMPTS_DIR" ]; then
     echo "Warning: prompts directory not found. Python version may use fallback prompts."
 fi
 
@@ -104,8 +86,8 @@ debug_log "Copying $SCRIPT_TYPE git-commit script"
 cp "$SOURCE_SCRIPT" "$SCRIPT_DIR/$SCRIPT_NAME"
 chmod +x "$SCRIPT_DIR/$SCRIPT_NAME"
 
-# Copy prompts directory if it exists and we're installing Python version
-if [ "$VERSION" = "py" ] && [ -d "$SOURCE_PROMPTS_DIR" ]; then
+# Copy prompts directory if it exists
+if [ -d "$SOURCE_PROMPTS_DIR" ]; then
     debug_log "Copying prompts directory"
     cp -r "$SOURCE_PROMPTS_DIR" "$SCRIPT_DIR/"
 fi
@@ -140,13 +122,13 @@ echo "Location: $SCRIPT_DIR/$SCRIPT_NAME"
 echo "Executable: $EXECUTABLE_NAME"
 echo ""
 
-if [ "$VERSION" = "py" ]; then
-    echo "Python version features:"
-    echo "- Better code organization and maintainability"
-    echo "- No external dependencies (uses built-in urllib)"
-    echo "- Object-oriented design for easier extension"
-    echo ""
-fi
+echo "Features:"
+echo "- Better code organization and maintainability"
+echo "- No external dependencies (uses built-in urllib)"
+echo "- Object-oriented design for easier extension"
+echo "- Adaptive prompting strategies based on model size"
+echo "- Comprehensive testing framework"
+echo ""
 
 echo "Setup:"
 echo "1. To set up your OpenRouter API key, run:"

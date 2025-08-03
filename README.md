@@ -56,9 +56,10 @@ cd cmai
 ```
 
 This will:
-- Create necessary directories
-- Install the script globally as `cmai`
+- Install the Python script globally as `cmai`
+- Copy prompt templates
 - Set up proper permissions
+- Create necessary directories
 
 ### Windows
 
@@ -76,14 +77,16 @@ cd cmai
 ```
 
 Or manually:
-- Copy `git-commit.sh` to `%USERPROFILE%\git-commit-ai\`
+- Copy `git-commit.py` to `%USERPROFILE%\git-commit-ai\`
+- Copy the `prompts/` directory to `%USERPROFILE%\git-commit-ai\`
 - Add the directory to your PATH environment variable
-- Rename `git-commit.sh` to `cmai.sh`
+- Rename `git-commit.py` to `cmai`
 
 This will:
-- Create necessary directories
-- Install the script globally as `cmai`
+- Install the Python script globally as `cmai`
+- Copy prompt templates
 - Set up proper permissions
+- Create necessary directories
 
 ## Configuration
 
@@ -293,15 +296,14 @@ Example generated commit messages:
 ```
 ~
 ├── git-commit-ai/
-│ └── git-commit.sh
+│ ├── git-commit.py
+│ └── prompts/       # AI prompt templates
 ├── .config/
 │ └── git-commit-ai/
 │   ├── config.json  # Configuration (API keys, models, providers)
 │   └── providers/   # Provider-specific configurations
-└── usr/
-  └── local/
-    └── bin/
-      └── cmai -> ~/git-commit-ai/git-commit.sh
+└── bin/
+  └── cmai -> ~/git-commit-ai/git-commit.py
 ```
 
 ### Windows
@@ -309,7 +311,8 @@ Example generated commit messages:
 ```
 %USERPROFILE%
 ├── git-commit-ai/
-│ └── cmai.sh
+│ ├── git-commit.py
+│ └── prompts/
 └── .config/
   └── git-commit-ai/
     ├── config.json

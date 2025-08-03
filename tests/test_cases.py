@@ -219,7 +219,8 @@ index 9489430..aa1bf33 100644
  ```bash
  # Commit and push
 @@ -302,12 +296,8 @@ Example generated commit messages:
- │ └── git-commit.sh
+ │ ├── git-commit.py
+│ └── prompts/
  ├── .config/
  │ └── git-commit-ai/
 -│   ├── config       # API key
