@@ -3,9 +3,14 @@ FINAL CHECK: If you're thinking "refactor", ask yourself:
 - Is this just formatting? Use "style" instead  
 - Is this just performance? Use "perf" instead
 - Is this documentation? Use "docs" instead
+- Is this build config/dependencies? Use "chore" instead
 Only use "refactor" for major architectural restructuring.
 
+BUILD/CONFIG CHANGES = "chore":
+- Adding/removing files from build systems (CMake, gyp, Makefile)
+- Updating dependencies, package.json, requirements.txt
+- Build script modifications
+- Configuration file updates
+
 ABSOLUTELY NO:
-- "This commit..." or "The changes include..." phrases
-- Numbered lists or explanatory paragraphs  
 - Use ONLY action-focused bullet points!

@@ -8,6 +8,13 @@ CORE RULES:
 - Types: feat, fix, docs, style, chore, perf, test, refactor
 - Use bullet points for body
 
+BODY STYLE - KEEP CONCISE:
+- Use short, action-focused bullet points
+- NO full file paths (use just filename or class name)
+- NO verbose descriptions or repetitive details
+- Combine similar operations when possible
+- Max 1-2 lines per bullet point
+
 TYPE GUIDE:
 • feat = new features/capabilities
 • fix = bug fixes, broken functionality  
