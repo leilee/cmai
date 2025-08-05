@@ -8,140 +8,169 @@ This is `cmai` - an AI-powered command-line tool that generates conventional com
 
 ### Core Architecture
 
-- **Main Script**: `git-commit.py` (Python implementation)
-- **Configuration**: JSON-based config system in `~/.config/git-commit-ai/`
-- **AI Providers**: Supports OpenRouter, Ollama, LMStudio, and custom providers
-- **Template System**: Adaptive prompting strategies based on model size in `prompts/` directory
-- **Testing Framework**: Comprehensive automated testing in `tests/` directory
+The project uses a **single-file Python implementation** (`git-commit.py`) with a sophisticated object-oriented design:
 
-### Key Components
+- **Main Classes**:
+  - `Config`: JSON-based configuration management with automatic migration from legacy formats
+  - `CommitMessageGenerator`: Core AI provider abstraction and adaptive prompting logic
+  - `TestResult` & `BatchTester`: Comprehensive testing framework with statistical analysis
 
-1. **Provider System**: Modular AI provider support with different API formats
-2. **Adaptive Prompting**: Different prompt templates for small/medium/large models
-3. **Config Management**: JSON-based configuration with migration from legacy format
-4. **Testing Suite**: Automated testing across multiple providers and models
+- **Provider System**: Unified interface supporting OpenRouter, Ollama, LMStudio, and custom APIs
+- **Adaptive Prompting**: Intelligent model tier detection (small/medium/large) with context-aware prompt selection
+- **Config Architecture**: Distributed JSON configs in `~/.config/git-commit-ai/providers/` with migration support
+- **Testing Framework**: Automated batch testing with 9 scenarios and multi-model comparison
 
 ## Development Commands
 
-### Running Tests
+### Testing
 
+**Automated Batch Testing:**
 ```bash
-# Run automated tests with default model (ollama:qwen3:4b)
+# Default testing (ollama:qwen3:4b, 3 rounds)
 python3 tests/auto_tester.py 3
 
-# Test specific provider and model
+# Provider-specific testing
 python3 tests/auto_tester.py --provider ollama --model qwen2.5:3b 3
 python3 tests/auto_tester.py --provider openrouter --model qwen/qwen-2.5-coder-32b-instruct:free 2
 
-# Multi-model comparison
+# Multi-model comparison (generates comparative analysis)
 python3 tests/auto_tester.py --multi qwen3:4b,qwen2.5:3b,qwen3:1.7b 2
 
-# Test specific scenarios
+# Cross-provider comparison
+python3 tests/auto_tester.py --multi qwen3:4b,openrouter:qwen/qwen-2.5-coder-32b-instruct:free 3
+```
+
+**Interactive Testing:**
+```bash
+# List all test scenarios
 python3 tests/test_runner.py list
+
+# Run specific scenario
 python3 tests/test_runner.py simple_fix
+
+# Run all scenarios interactively
 python3 tests/test_runner.py all
 ```
 
-### Using the Tool
+**Test Reports:** Generated in `tests/test_report_YYYYMMDD_HHMMSS.txt` with accuracy metrics and analysis.
 
+### Tool Usage & Installation
+
+**Basic Commands:**
 ```bash
-# Basic usage (generates and commits)
+# Generate and commit
 cmai
 
-# With different providers
+# Provider switching (saves preference)
 cmai --use-ollama
-cmai --use-openrouter
+cmai --use-openrouter  
 cmai --use-lmstudio
+cmai --use-custom http://your-api-endpoint
 
-# Dry run to preview message
-cmai --dry-run
+# Model selection
+cmai --model qwen2.5:3b
+cmai --model qwen/qwen-2.5-coder-32b-instruct:free
 
-# Debug mode
-cmai --debug
-
-# Commit and push
-cmai --push
+# Development options
+cmai --dry-run    # Preview without committing
+cmai --debug      # Verbose API/diff analysis
+cmai --push       # Commit and push to remote
 ```
 
-### Installation Testing
-
+**Installation:**
 ```bash
-# Linux/macOS/Windows
-./install.sh
-
-# Test installation
-cmai --help
+./install.sh        # Cross-platform installer
+cmai --help         # Verify installation
 ```
 
-## Code Structure
+## Code Architecture
 
-### Python Implementation
+### Key Design Patterns
 
-The project uses a single Python implementation (`git-commit.py`):
-- **Maintainable**: Object-oriented design with clear separation of concerns
-- **Feature-rich**: Advanced template system, comprehensive testing framework
-- **No dependencies**: Uses only Python standard library (urllib, json, etc.)
-- **Cross-platform**: Works on Linux, macOS, and Windows
+**Single-File Architecture:** `git-commit.py` contains all core logic (no external dependencies beyond Python stdlib)
 
-### Configuration System
+**Config Class Pattern:**
+- JSON-based distributed configuration in `~/.config/git-commit-ai/providers/`
+- Automatic migration from legacy single-file configs
+- Provider-specific settings with fallback to defaults
 
-- **Location**: `~/.config/git-commit-ai/`
-- **Main config**: `config.json` (current provider)
-- **Provider configs**: `providers/openrouter.json`, `providers/ollama.json`, etc.
-- **Migration**: Automatic migration from legacy single-file format
+**Adaptive Prompting System:**
+- `get_model_tier()`: Automatic model classification (small ≤2B, medium 3-10B, large ≥30B)
+- `detect_change_context()`: Smart context detection for medium/small models
+- Template selection from `prompts/` directory based on model tier
 
-### Template System
+**Provider Abstraction:**
+- Unified `make_api_request()` interface for all providers (OpenRouter, Ollama, LMStudio, custom)
+- Provider-specific request formatting in `build_request_data()`
+- Consistent error handling across all providers
 
-Located in `prompts/` directory:
-- `small_model.txt` - For models ≤2B parameters (1b, 1.7b, 2b)
-- `medium_model.txt` - For models 3-10B parameters (3b, 4b, 7b, 8b)
-- `large_model.txt` - For models ≥30B parameters (30b, 32b, 70b, 72b)
-- `final_check.txt` - Post-processing validation
-- Provider-specific templates: `openrouter_system.txt`, `ollama_base.txt`
+### Template System Architecture
 
-### Testing Framework
+**Prompt Templates** in `prompts/`:
+- `small_model.txt` - Heavy guidance for ≤2B models (detailed examples, strict format rules)
+- `medium_model.txt` - Balanced approach for 3-10B models (context hints, format reminders)  
+- `large_model.txt` - Minimal prompting for ≥30B models (brief format specification)
+- `final_check.txt` - Post-processing validation for all models
+- Provider-specific: `openrouter_system.txt`, `ollama_base.txt`, `openrouter_user.txt`
 
-- **test_cases.py**: Defines test scenarios for different commit types
-- **auto_tester.py**: Automated batch testing with statistical analysis
-- **test_runner.py**: Interactive testing for prompt development
+**Context Detection** (`git-commit.py:424-444`):
+- Smart diff analysis for formatting vs. logic changes
+- Dependency file detection for proper `chore` vs `fix` classification
+- Performance optimization pattern recognition
+- Large refactor detection across multiple files
 
-## Important Patterns
+### Testing Architecture
 
-### Provider Detection
+**Test Case System** (`tests/test_cases.py`):
+- 9 predefined scenarios covering all conventional commit types
+- Each test case includes expected type, scope, realistic diffs
+- Scenarios: simple_fix, new_feature, documentation_update, refactor_large, etc.
 
-The system automatically detects optimal prompting strategies:
+**Batch Testing** (`tests/auto_tester.py`):
+- Statistical analysis across multiple rounds
+- Multi-model comparison with accuracy metrics
+- Automated report generation with detailed analysis
+- Format compliance validation and type accuracy tracking
+
+## Important Implementation Details
+
+### Model Tier Detection (`git-commit.py:405-422`)
+
+Automatic classification based on parameter count patterns in model names:
 ```python
 def get_model_tier(self) -> str:
-    # Logic to classify models as small/medium/large
-    # Based on known model parameter counts
+    # Large: 32b, 30b, 70b, 72b → minimal prompting
+    # Small: 1.7b, 1b, 2b → heavy prompting with examples  
+    # Medium: 3b, 4b, 7b, 8b → balanced approach
+    # Default: medium for unknown models
 ```
 
-### Error Handling
+### Smart Diff Processing
 
-All providers implement consistent error handling:
-- API connectivity checks
-- Model availability validation  
-- Response format verification
-- Token limit management
+Size-based diff handling to manage token limits:
+- **Small diffs** (<15k chars): Full diff included in prompt
+- **Medium diffs** (15k-50k chars): Truncated with warning notice
+- **Large diffs** (>50k chars): File statistics only with change summary
 
-### Diff Processing
+### Context Detection Logic (`git-commit.py:424-444`)
 
-Smart diff handling based on size:
-- Small diffs (<15k chars): Full diff included
-- Medium diffs (15k-50k chars): Truncated with warning
-- Large diffs (>50k chars): File list only with statistics
+For medium/small models, provides smart hints to avoid common misclassifications:
+- **Formatting changes**: Detects spacing/indentation → suggests `style` not `fix`
+- **Dependencies**: Detects package files → suggests `chore` not `fix`  
+- **Performance**: Detects optimization patterns → suggests `perf` not `refactor`
+- **Large refactors**: Multiple file changes → suggests `refactor` not `fix`
 
-## Testing Guidelines
+## Development Workflow
 
-### Adding New Test Cases
+### Adding Test Cases
 
-Edit `tests/test_cases.py`:
+Add to `tests/test_cases.py`:
 ```python
 TestCase(
-    name="your_scenario",
-    description="Description of the change type",
-    changes="M file1.py A file2.js",
-    diff="...",
+    name="scenario_name",
+    description="Description",
+    changes="M file1.py A file2.js",  # git status format
+    diff="...",                      # realistic git diff
     expected_type="feat|fix|docs|etc",
     expected_scope="optional_scope"
 )
@@ -149,28 +178,35 @@ TestCase(
 
 ### Validating Changes
 
-Always run the test suite when making changes:
-1. Test with multiple providers: `python3 tests/auto_tester.py --multi qwen3:4b,openrouter:qwen/qwen-2.5-coder-32b-instruct:free`
-2. Check format compliance and type accuracy
-3. Verify consistency across test rounds
+**Required testing when modifying prompts or core logic:**
+```bash  
+# Multi-provider validation
+python3 tests/auto_tester.py --multi qwen3:4b,openrouter:qwen/qwen-2.5-coder-32b-instruct:free 3
 
-### Performance Testing
+# Check format compliance and accuracy trends
+python3 tests/auto_tester.py --provider ollama --model qwen2.5:3b 5
+```
 
-Monitor token usage and response times:
-- Use `--debug` flag to see API request/response details
-- Check diff truncation logic for large changes
-- Validate adaptive prompting is working correctly
+**Performance validation:**
+- Use `--debug` to verify diff truncation and token management
+- Test with various diff sizes (small <15k, medium 15k-50k, large >50k chars)
+- Verify adaptive prompting tier detection with different model names
 
-## Security Considerations
+### Adding New Providers
 
-- API keys stored with 600 permissions in `~/.config/git-commit-ai/`
-- Config directory protected with 700 permissions
-- No logging of sensitive data
-- HTTPS-only for remote providers
+1. **Add default config** in `Config.__init__()` → `self.default_configs`
+2. **Implement API format** in `build_request_data()` method  
+3. **Add provider-specific templates** in `prompts/` directory if needed
+4. **Test across all scenarios** with the automated testing framework
 
-## Contributing Workflow
+### Prompt Template Development
 
-1. Test changes across multiple providers and models
-2. Run the automated test suite
-3. Verify backwards compatibility with existing configs
-4. Update documentation if adding new features
+**Template hierarchy** (most to least verbose):
+1. `small_model.txt` - Extensive examples and format enforcement
+2. `medium_model.txt` - Context hints and gentle guidance  
+3. `large_model.txt` - Minimal specification
+
+**Context detection tuning** in `detect_change_context()`:
+- Add pattern detection for new commit types
+- Test detection accuracy with `--debug` flag
+- Validate hints improve classification for medium/small models
