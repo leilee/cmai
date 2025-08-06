@@ -10,12 +10,13 @@ Generate a commit message for these changes:
 ## Format:
 <type>(<scope>): <subject>
 
-<body>
+[<body>]
 
 Important:
 - Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
 - Subject: max 70 characters, imperative mood, no period
-- Body: list changes to explain what and why, not how. Use bullet points
+- Body: AVOID for simple changes. Only add if truly complex changes need explanation. Skip body for: debug logs, formatting, single-line fixes, simple template updates, minor refactors, style changes
+- When body is absolutely needed: max 2-3 concise bullets, group similar changes
 - Scope: max 3 words
 - Do not wrap your response in triple backticks
 - Response should be the commit message only, no explanations.
