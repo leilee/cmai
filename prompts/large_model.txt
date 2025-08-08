@@ -5,7 +5,7 @@
 
 Important:
 - Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
-- Subject: max 70 characters, imperative mood, no period
+- Subject: max 120 characters, imperative mood, no period
 - Body: list changes to explain what and why, not how. Use bullet points
 - Scope: max 3 words
 - Do not wrap your response in triple backticks

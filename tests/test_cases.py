@@ -288,7 +288,7 @@ index 52f9309..0f8810f 100755
 -
 -Important:
 -- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
--- Subject: max 70 characters, imperative mood, no period
+-- Subject: max 120 characters, imperative mood, no period
 -- Body: list changes to explain what and why, not how
 -- Scope: max 3 words
 -- For minor changes: use 'fix' instead of 'feat'
@@ -318,7 +318,7 @@ index 52f9309..0f8810f 100755
 -
 -Important:
 -- Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
--- Subject: max 70 characters, imperative mood, no period
+-- Subject: max 120 characters, imperative mood, no period
 -- Body: list changes to explain what and why, not how
 -- Scope: max 3 words
 -- For minor changes: use 'fix' instead of 'feat'
