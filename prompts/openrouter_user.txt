@@ -14,7 +14,7 @@ Generate a commit message for these changes:
 
 Important:
 - Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
-- Subject: max 70 characters, imperative mood, no period
+- Subject: max 120 characters, imperative mood, no period
 - Body: AVOID for simple changes. Only add if truly complex changes need explanation. Skip body for: debug logs, formatting, simple template updates, minor refactors, style changes
 - When body is absolutely needed: max 2-3 concise bullets, group similar changes
 - Scope: max 3 words
