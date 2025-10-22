@@ -15,8 +15,9 @@ Generate a commit message for these changes:
 Important:
 - Type must be one of: feat, fix, docs, style, refactor, perf, test, chore
 - Subject: max 120 characters, imperative mood, no period
-- Body: AVOID for simple changes. Only add if truly complex changes need explanation. Skip body for: debug logs, formatting, simple template updates, minor refactors, style changes
-- When body is absolutely needed: max 2-3 concise bullets, group similar changes
+- Body: Optional. Only add if the change needs context. Use 2-3 brief bullet points describing the core change and its purpose
 - Scope: max 3 words
+- Prefer concise commits - omit body if the subject line is self-explanatory
+- Avoid listing implementation details, file names, or technical specifics
 - Do not wrap your response in triple backticks
 - Response should be the commit message only, no explanations.
